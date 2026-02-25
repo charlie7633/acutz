@@ -1,16 +1,21 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, Button, FlatList, Image, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Button, FlatList, Image, Alert, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import 'react-native-url-polyfill/auto';
 import { account, databases, storage, appwriteConfig, client } from './appwriteConfig';
 import { ID, Query } from 'react-native-appwrite';
+import { Ionicons } from '@expo/vector-icons';
+import { theme } from './theme';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+  const [accountType, setAccountType] = useState('user');
+
 
   // Hair Type Data
   const [hairTypes, setHairTypes] = useState([]);
@@ -168,29 +173,91 @@ export default function App() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Acutz Login</Text>
-        <TextInput
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.input}
-          autoCapitalize="none"
-        />
-        <TextInput
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          style={styles.input}
-          secureTextEntry
-        />
-        {loading ? <ActivityIndicator /> : (
+        <View style={styles.logoContainer}>
+          <View style={styles.logoCircle}>
+            <Ionicons name="cut" size={50} color={theme.colors.primary} />
+          </View>
+          <Text style={styles.appTitle}>Acutz</Text>
+          <Text style={styles.appSubtitle}>Personalized Hair Care Management</Text>
+        </View>
+
+        <View style={styles.authTabs}>
+          <TouchableOpacity
+            style={[styles.authTab, authMode === 'login' && styles.authTabActive]}
+            onPress={() => setAuthMode('login')}
+          >
+            <Text style={[styles.authTabText, authMode === 'login' && styles.authTabTextActive]}>Login</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.authTab, authMode === 'signup' && styles.authTabActive]}
+            onPress={() => setAuthMode('signup')}
+          >
+            <Text style={[styles.authTabText, authMode === 'signup' && styles.authTabTextActive]}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionLabel}>Choose Account Type</Text>
+        <View style={styles.accountTypeRow}>
+          <TouchableOpacity
+            style={[styles.accountCard, accountType === 'user' && styles.accountCardActive]}
+            onPress={() => setAccountType('user')}
+          >
+            <View style={[styles.accountIconCircle, accountType === 'user' && styles.accountIconCircleActive]}>
+              <Ionicons name="person" size={24} color={accountType === 'user' ? theme.colors.primary : theme.colors.textMuted} />
+            </View>
+            <Text style={[styles.accountCardText, accountType === 'user' && styles.accountCardTextActive]}>User</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.accountCard, accountType === 'professional' && styles.accountCardActive]}
+            onPress={() => setAccountType('professional')}
+          >
+            <View style={[styles.accountIconCircle, accountType === 'professional' && styles.accountIconCircleActive]}>
+              <Ionicons name="cut" size={24} color={accountType === 'professional' ? theme.colors.primary : theme.colors.textMuted} />
+            </View>
+            <Text style={[styles.accountCardText, accountType === 'professional' && styles.accountCardTextActive]}>Professional</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.inputLabel}>Email</Text>
+        <View style={styles.inputContainer}>
+          <Ionicons name="mail-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
+          <TextInput
+            placeholder="hello@acutz.com"
+            placeholderTextColor={theme.colors.textMuted}
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+            autoCapitalize="none"
+          />
+        </View>
+        <Text style={styles.inputLabel}>Password</Text>
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
+          <TextInput
+            placeholder="••••••••"
+            placeholderTextColor={theme.colors.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            style={styles.input}
+            secureTextEntry
+          />
+          <Ionicons name="eye-outline" size={20} color={theme.colors.textMuted} />
+        </View>
+
+        {loading ? <ActivityIndicator color={theme.colors.primary} /> : (
           <View style={styles.buttonContainer}>
-            <Button title="Login" onPress={handleLogin} />
-            <View style={{ height: 10 }} />
-            <Button title="Sign Up" onPress={handleSignUp} color="gray" />
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={authMode === 'login' ? handleLogin : handleSignUp}
+            >
+              <Text style={styles.primaryButtonText}>
+                {authMode === 'login' ? 'Login' : 'Sign Up'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
-        <StatusBar style="auto" />
+        <StatusBar style="light" />
       </View>
     );
   }
@@ -199,7 +266,9 @@ export default function App() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Welcome!</Text>
-        <Button title="Sign Out" onPress={handleSignOut} color="red" />
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content}>
@@ -208,11 +277,14 @@ export default function App() {
           <View style={styles.row}>
             <TextInput
               placeholder="Add Hair Type (e.g. 4c)"
+              placeholderTextColor={theme.colors.textMuted}
               value={newHairType}
               onChangeText={setNewHairType}
               style={[styles.input, { flex: 1, marginBottom: 0, marginRight: 10 }]}
             />
-            <Button title="Add" onPress={addHairType} />
+            <TouchableOpacity style={styles.addButton} onPress={addHairType}>
+              <Text style={styles.addButtonText}>Add</Text>
+            </TouchableOpacity>
           </View>
 
           {hairTypes.map((type) => (
@@ -224,12 +296,16 @@ export default function App() {
 
         <View style={styles.section}>
           <Text style={styles.subtitle}>Your Photos</Text>
-          <Button title="Pick & Upload Image" onPress={pickImage} />
-          {uploading && <ActivityIndicator style={{ marginTop: 10 }} />}
+          <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+            <Ionicons name="camera" size={20} color={theme.colors.text} style={{ marginRight: 8 }} />
+            <Text style={styles.uploadButtonText}>Pick & Upload Image</Text>
+          </TouchableOpacity>
+
+          {uploading && <ActivityIndicator style={{ marginTop: 15 }} color={theme.colors.primary} />}
           {image && <Image source={{ uri: image }} style={styles.previewImage} />}
         </View>
       </ScrollView>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </View>
   );
 }
@@ -237,64 +313,237 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    backgroundColor: theme.colors.background,
+    paddingTop: 60,
+    paddingHorizontal: 24,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.colors.tappable,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  appTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: theme.colors.secondary,
+    marginBottom: 8,
+  },
+  appSubtitle: {
+    fontSize: 14,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.m,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 15,
+    marginBottom: 20,
+    height: 55,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    color: theme.colors.text,
+    fontSize: 16,
+  },
+  buttonContainer: {
+    marginTop: 20,
+    width: '100%',
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 15,
+    borderRadius: theme.borderRadius.l,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: theme.colors.tappable,
+    paddingVertical: 15,
+    borderRadius: theme.borderRadius.l,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+    color: theme.colors.text,
+  },
+  signOutButton: {
+    backgroundColor: theme.colors.surface,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: theme.borderRadius.m,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+  },
+  signOutButtonText: {
+    color: theme.colors.error,
+    fontWeight: 'bold',
   },
   subtitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
-    marginTop: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-    width: '100%',
-  },
-  buttonContainer: {
+    color: theme.colors.secondary,
+    marginBottom: 15,
     marginTop: 10,
-    width: '100%',
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 40,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 15,
+  },
+  addButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: theme.borderRadius.m,
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    color: theme.colors.text,
+    fontWeight: 'bold',
   },
   listItem: {
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    marginBottom: 5,
-    borderRadius: 5,
+    padding: 15,
+    backgroundColor: theme.colors.surface,
+    marginBottom: 10,
+    borderRadius: theme.borderRadius.m,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   listText: {
     fontSize: 16,
+    color: theme.colors.text,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.tappable,
+    paddingVertical: 15,
+    borderRadius: theme.borderRadius.m,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  uploadButtonText: {
+    color: theme.colors.text,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   previewImage: {
-    width: 200,
-    height: 200,
-    marginTop: 10,
-    borderRadius: 10,
+    width: '100%',
+    height: 250,
+    marginTop: 20,
+    borderRadius: theme.borderRadius.l,
+    resizeMode: 'cover',
   },
   content: {
     flex: 1,
+  },
+  authTabs: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: 4,
+    marginBottom: 24,
+  },
+  authTab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: theme.borderRadius.xl,
+  },
+  authTabActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  authTabText: {
+    color: theme.colors.textMuted,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  authTabTextActive: {
+    color: theme.colors.text,
+  },
+  sectionLabel: {
+    color: theme.colors.secondary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  accountTypeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  accountCard: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.l,
+    paddingVertical: 20,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  accountCardActive: {
+    borderColor: theme.colors.primary,
+  },
+  accountIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  accountIconCircleActive: {
+    backgroundColor: theme.colors.tappable,
+  },
+  accountCardText: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  accountCardTextActive: {
+    color: theme.colors.text,
+  },
+  inputLabel: {
+    color: theme.colors.secondary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 8,
   }
 });
