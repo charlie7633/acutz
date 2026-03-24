@@ -1,15 +1,15 @@
 import React, { useState, useContext } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
-  Modal, 
-  ScrollView, 
-  SafeAreaView, 
-  Dimensions, 
-  Image 
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  SafeAreaView,
+  Dimensions,
+  Image
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,21 +47,21 @@ export const ClientHomeScreen = () => {
   const [activeQuickTag, setActiveQuickTag] = useState('All');
 
   const toggleTexture = (texture) => {
-    setSelectedTextures(prev => 
+    setSelectedTextures(prev =>
       prev.includes(texture) ? prev.filter(t => t !== texture) : [...prev, texture]
     );
   };
 
   const toggleService = (service) => {
-    setSelectedServices(prev => 
+    setSelectedServices(prev =>
       prev.includes(service) ? prev.filter(s => s !== service) : [...prev, service]
     );
   };
 
   const renderChip = (label, isSelected, onPress) => {
     return (
-      <TouchableOpacity 
-        style={[styles.modalChip, isSelected && styles.modalChipSelected]} 
+      <TouchableOpacity
+        style={[styles.modalChip, isSelected && styles.modalChipSelected]}
         onPress={() => onPress(label)}
         activeOpacity={0.8}
         key={label}
@@ -76,7 +76,7 @@ export const ClientHomeScreen = () => {
   return (
     <View style={styles.container}>
       {/* MAP BACKGROUND */}
-      <MapView 
+      <MapView
         provider={PROVIDER_DEFAULT}
         userInterfaceStyle="dark"
         style={styles.map}
@@ -88,14 +88,14 @@ export const ClientHomeScreen = () => {
         }}
       >
         {MOCK_STYLISTS.map(stylist => (
-          <Marker 
+          <Marker
             key={stylist.id}
             coordinate={{ latitude: stylist.latitude, longitude: stylist.longitude }}
           >
             <View style={styles.pinGlow}>
-                <View style={styles.mapPin}>
-                  <Ionicons name="cut" size={14} color={COLORS.white} />
-                </View>
+              <View style={styles.mapPin}>
+                <Ionicons name="cut" size={14} color={COLORS.white} />
+              </View>
             </View>
           </Marker>
         ))}
@@ -103,16 +103,16 @@ export const ClientHomeScreen = () => {
 
       {/* HEADER & SEARCH (Glass Overlay) */}
       <SafeAreaView style={styles.headerContainer} pointerEvents="box-none">
-        
+
         {/* Logout (Small functional icon) */}
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-           <Ionicons name="log-out" size={18} color={COLORS.white} />
+          <Ionicons name="log-out" size={18} color={COLORS.white} />
         </TouchableOpacity>
 
         {/* Search Row */}
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
-            <TextInput 
+            <TextInput
               style={styles.searchInput}
               placeholder="Search stylists, textures..."
               placeholderTextColor="#BDBDBD"
@@ -121,8 +121,8 @@ export const ClientHomeScreen = () => {
             />
             <Ionicons name="search" size={20} color={COLORS.white} style={styles.searchIcon} />
           </View>
-          <TouchableOpacity 
-            style={styles.filterBtn} 
+          <TouchableOpacity
+            style={styles.filterBtn}
             onPress={() => setFilterVisible(true)}
           >
             <Ionicons name="options" size={20} color={COLORS.white} />
@@ -130,9 +130,9 @@ export const ClientHomeScreen = () => {
         </View>
 
         {/* Quick Tags Row */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           style={styles.quickTagsScrollView}
           contentContainerStyle={{ paddingRight: 20 }}
         >
@@ -156,45 +156,45 @@ export const ClientHomeScreen = () => {
       {/* BOTTOM SHEET / STYLIST RESULTS */}
       <View style={styles.bottomSheetContainer} pointerEvents="box-none">
         <View style={styles.resultsSheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitleText}>Nearby Specialists</Text>
-            
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.carouselContainer}
-              snapToInterval={Dimensions.get('window').width * 0.75 + 15}
-              decelerationRate="fast"
-            >
-              {MOCK_STYLISTS.map(stylist => (
-                <View key={stylist.id} style={styles.stylistCard}>
-                  <Image source={{ uri: stylist.image }} style={styles.cardImage} />
-                  
-                  <View style={styles.cardInfo}>
-                    <View style={styles.cardHeader}>
-                      <View>
-                        <Text style={styles.stylistSubtext}>Stylist Name</Text>
-                        <Text style={styles.stylistName}>{stylist.name}</Text>
-                      </View>
-                      <View style={styles.ratingBadge}>
-                        <Ionicons name="star" size={12} color="#FFD700" />
-                        <Text style={styles.ratingText}>{stylist.rating}</Text>
-                      </View>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitleText}>Nearby Specialists</Text>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.carouselContainer}
+            snapToInterval={Dimensions.get('window').width * 0.75 + 15}
+            decelerationRate="fast"
+          >
+            {MOCK_STYLISTS.map(stylist => (
+              <View key={stylist.id} style={styles.stylistCard}>
+                <Image source={{ uri: stylist.image }} style={styles.cardImage} />
+
+                <View style={styles.cardInfo}>
+                  <View style={styles.cardHeader}>
+                    <View>
+                      <Text style={styles.stylistSubtext}>Stylist Name</Text>
+                      <Text style={styles.stylistName}>{stylist.name}</Text>
                     </View>
-                    
-                    <Text style={styles.priceText}>Starts at <Text style={{fontWeight: 'bold', color: COLORS.white}}>${stylist.price}</Text></Text>
-                    
-                    <View style={styles.tagsContainer}>
-                      {stylist.tags.map(tag => (
-                        <View key={tag} style={styles.cardTag}>
-                          <Text style={styles.cardTagText}>{tag}</Text>
-                        </View>
-                      ))}
+                    <View style={styles.ratingBadge}>
+                      <Ionicons name="star" size={12} color="#FFD700" />
+                      <Text style={styles.ratingText}>{stylist.rating}</Text>
                     </View>
                   </View>
+
+                  <Text style={styles.priceText}>Starts at <Text style={{ fontWeight: 'bold', color: COLORS.white }}>${stylist.price}</Text></Text>
+
+                  <View style={styles.tagsContainer}>
+                    {stylist.tags.map(tag => (
+                      <View key={tag} style={styles.cardTag}>
+                        <Text style={styles.cardTagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              ))}
-            </ScrollView>
+              </View>
+            ))}
+          </ScrollView>
         </View>
       </View>
 
@@ -218,7 +218,7 @@ export const ClientHomeScreen = () => {
               <View style={styles.filterSection}>
                 <Text style={styles.sectionTitle}>Hair Texture</Text>
                 <View style={styles.chipsWrapper}>
-                  {hairTextures.map(texture => 
+                  {hairTextures.map(texture =>
                     renderChip(texture, selectedTextures.includes(texture), toggleTexture)
                   )}
                 </View>
@@ -227,7 +227,7 @@ export const ClientHomeScreen = () => {
               <View style={styles.filterSection}>
                 <Text style={styles.sectionTitle}>Service Needed</Text>
                 <View style={styles.chipsWrapper}>
-                  {serviceTypes.map(service => 
+                  {serviceTypes.map(service =>
                     renderChip(service, selectedServices.includes(service), toggleService)
                   )}
                 </View>
@@ -235,12 +235,12 @@ export const ClientHomeScreen = () => {
             </ScrollView>
 
             <View style={styles.applyContainer}>
-               <TouchableOpacity 
-                  style={styles.applyButton} 
-                  onPress={() => setFilterVisible(false)}
-                >
-                  <Text style={styles.applyButtonText}>Apply Filters</Text>
-               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.applyButton}
+                onPress={() => setFilterVisible(false)}
+              >
+                <Text style={styles.applyButtonText}>Apply Filters</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   mapPin: {
-    backgroundColor: '#000000', 
+    backgroundColor: '#000000',
     padding: 10,
     borderRadius: 20,
     borderWidth: 2,
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     position: 'absolute',
-    top: 45, 
+    top: 45,
     left: 20,
     right: 0,
     zIndex: 10,
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   modalChip: {
     backgroundColor: COLORS.brandAccent,
     borderWidth: 1,
-    borderColor: COLORS.secondaryAccent2, 
+    borderColor: COLORS.secondaryAccent2,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   modalChipSelected: {
-    backgroundColor: COLORS.cardSecondary, 
+    backgroundColor: COLORS.cardSecondary,
     borderColor: COLORS.cardSecondary,
   },
   modalChipText: {
