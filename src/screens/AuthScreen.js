@@ -24,7 +24,7 @@ export const AuthScreen = () => {
       if (authMode === 'login') {
         await login(email, password);
       } else {
-        await register(email, password);
+        await register(email, password, accountType);
         Alert.alert("Success", "Account created!");
       }
     } catch (error) {

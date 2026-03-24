@@ -8,7 +8,7 @@ import { databases, storage, appwriteConfig, client } from '../config/appwriteCo
 import { AuthContext } from '../context/AuthContext';
 import { HairTypeItem } from '../components/HairTypeItem';
 
-export const HomeScreen = () => {
+export const ProfessionalHomeScreen = () => {
   const { logout, user } = useContext(AuthContext);
   const [hairTypes, setHairTypes] = useState([]);
   const [newHairType, setNewHairType] = useState('');

@@ -12,6 +12,7 @@ export const AuthProvider = ({ children }) => {
   const checkUser = async () => {
     try {
       const currentUser = await account.get();
+      // user.prefs will hold { role: 'client' } or similar
       setUser({ ...currentUser, uid: currentUser.$id });
     } catch (e) {
       setUser(null);
@@ -31,9 +32,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Register Function
-  const register = async (email, password) => {
+  const register = async (email, password, role) => {
     await account.create(ID.unique(), email, password);
     await account.createEmailPasswordSession(email, password);
+    await account.updatePrefs({ role });
     await checkUser();
   };
 

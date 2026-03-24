@@ -10,7 +10,8 @@ import { AuthProvider, AuthContext } from './src/context/AuthContext';
 
 // Screens
 import { AuthScreen } from './src/screens/AuthScreen';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { ClientHomeScreen } from './src/screens/ClientHomeScreen';
+import { ProfessionalHomeScreen } from './src/screens/ProfessionalHomeScreen';
 
 // Theme
 import { theme } from './src/theme/theme';
@@ -28,11 +29,18 @@ const AppContent = () => {
     );
   }
 
+  // user.prefs.role will be 'user' or 'professional' based on registration
+  const isProfessional = user?.prefs?.role === 'professional';
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Home" component={HomeScreen} />
+          isProfessional ? (
+            <Stack.Screen name="ProfessionalHome" component={ProfessionalHomeScreen} />
+          ) : (
+            <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
+          )
         ) : (
           <Stack.Screen name="Auth" component={AuthScreen} />
         )}
