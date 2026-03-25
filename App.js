@@ -12,6 +12,7 @@ import { AuthProvider, AuthContext } from './src/context/AuthContext';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { ClientHomeScreen } from './src/screens/ClientHomeScreen';
 import { ProfessionalHomeScreen } from './src/screens/ProfessionalHomeScreen';
+import { ProfessionalProfileSetup } from './src/screens/ProfessionalProfileSetup';
 
 // Theme
 import { theme } from './src/theme/theme';
@@ -37,7 +38,10 @@ const AppContent = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           isProfessional ? (
-            <Stack.Screen name="ProfessionalHome" component={ProfessionalHomeScreen} />
+            <>
+              <Stack.Screen name="ProfessionalHome" component={ProfessionalHomeScreen} />
+              <Stack.Screen name="ProfessionalSetup" component={ProfessionalProfileSetup} />
+            </>
           ) : (
             <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
           )

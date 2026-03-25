@@ -8,7 +8,7 @@ import { databases, storage, appwriteConfig, client } from '../config/appwriteCo
 import { AuthContext } from '../context/AuthContext';
 import { HairTypeItem } from '../components/HairTypeItem';
 
-export const ProfessionalHomeScreen = () => {
+export const ProfessionalHomeScreen = ({ navigation }) => {
   const { logout, user } = useContext(AuthContext);
   const [hairTypes, setHairTypes] = useState([]);
   const [newHairType, setNewHairType] = useState('');
@@ -105,9 +105,17 @@ export const ProfessionalHomeScreen = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Welcome!</Text>
-        <TouchableOpacity style={styles.signOutButton} onPress={logout}>
-          <Text style={styles.signOutButtonText}>Sign Out</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity 
+            style={[styles.signOutButton, { borderColor: theme.colors.primary }]} 
+            onPress={() => navigation.navigate('ProfessionalSetup')}
+          >
+            <Text style={[styles.signOutButtonText, { color: theme.colors.primary }]}>Setup Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.signOutButton} onPress={logout}>
+            <Text style={styles.signOutButtonText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
