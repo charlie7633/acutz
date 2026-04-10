@@ -13,7 +13,7 @@ import { theme } from '../theme/theme';
 import { AuthContext } from '../context/AuthContext';
 import { databases, appwriteConfig } from '../config/appwriteConfig';
 import { ID } from 'react-native-appwrite';
-
+import { ChipSelector } from '../components/ChipSelector';
 const hairTextures = ['1A-2C', '3A', '3B', '3C', '4A', '4B', '4C'];
 const serviceTypes = ['Barber', 'Loctician', 'Hairdresser', 'Braider', 'Colorist'];
 
@@ -33,26 +33,6 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
     }
   };
 
-  const renderChips = (options, selectedList, setSelectedList) => {
-    return (
-      <View style={styles.chipsWrapper}>
-        {options.map(option => {
-          const isSelected = selectedList.includes(option);
-          return (
-            <TouchableOpacity
-              key={option}
-              style={[styles.chip, isSelected && styles.chipSelected]}
-              onPress={() => toggleSelection(option, selectedList, setSelectedList)}
-            >
-              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                {option}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
-  };
 
   const handleSaveProfile = async () => {
     if (!businessName.trim() || !startingPrice.trim() || selectedTextures.length === 0 || selectedServices.length === 0) {
@@ -129,15 +109,19 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
           />
         </View>
 
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Specialized Hair Textures</Text>
-          {renderChips(hairTextures, selectedTextures, setSelectedTextures)}
-        </View>
+        <ChipSelector 
+          title="Specialized Hair Textures"
+          options={hairTextures}
+          selectedOptions={selectedTextures}
+          onToggle={(option) => toggleSelection(option, selectedTextures, setSelectedTextures)}
+        />
 
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Services Provided</Text>
-          {renderChips(serviceTypes, selectedServices, setSelectedServices)}
-        </View>
+        <ChipSelector 
+          title="Services Provided"
+          options={serviceTypes}
+          selectedOptions={selectedServices}
+          onToggle={(option) => toggleSelection(option, selectedServices, setSelectedServices)}
+        />
 
         <TouchableOpacity 
           style={styles.submitButton} 
@@ -197,33 +181,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.m,
     borderWidth: 1,
     borderColor: theme.colors.border,
-  },
-  chipsWrapper: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  chip: {
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 25,
-    marginRight: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  chipSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  chipText: {
-    color: theme.colors.textMuted,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  chipTextSelected: {
-    color: theme.colors.text, 
-    fontWeight: 'bold',
   },
   submitButton: {
     backgroundColor: theme.colors.primary,

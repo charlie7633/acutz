@@ -37,8 +37,7 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
     try {
       const response = await databases.listDocuments(
         appwriteConfig.databaseId,
-        appwriteConfig.collectionId,
-        [Query.orderDesc('createdAt')]
+        appwriteConfig.collectionId
       );
       const types = response.documents.map(doc => ({ id: doc.$id, ...doc }));
       setHairTypes(types);
