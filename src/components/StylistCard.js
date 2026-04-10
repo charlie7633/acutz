@@ -11,27 +11,36 @@ const COLORS = {
 };
 
 export const StylistCard = ({ stylist }) => {
+  // Safely extract database fields with fallbacks
+  const name = stylist.businessName || 'Unknown Stylist';
+  const price = stylist.startingPrice !== undefined ? stylist.startingPrice : '--';
+  const rating = stylist.rating !== undefined ? stylist.rating.toFixed(1) : 'New';
+  const tags = [...(stylist.hairTypes || []), ...(stylist.services || [])];
+  
+  // Use a fallback image if no image URL is stored in DB yet
+  const imageUri = stylist.image || 'https://images.unsplash.com/photo-1542596594-649edbc13630?auto=format&fit=crop&w=300&q=80';
+
   return (
     <View style={styles.stylistCard}>
-      <Image source={{ uri: stylist.image }} style={styles.cardImage} />
+      <Image source={{ uri: imageUri }} style={styles.cardImage} />
 
       <View style={styles.cardInfo}>
         <View style={styles.cardHeader}>
           <View>
             <Text style={styles.stylistSubtext}>Stylist Name</Text>
-            <Text style={styles.stylistName}>{stylist.name}</Text>
+            <Text style={styles.stylistName}>{name}</Text>
           </View>
           <View style={styles.ratingBadge}>
             <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={styles.ratingText}>{stylist.rating}</Text>
+            <Text style={styles.ratingText}>{rating}</Text>
           </View>
         </View>
 
-        <Text style={styles.priceText}>Starts at <Text style={{ fontWeight: 'bold', color: COLORS.white }}>${stylist.price}</Text></Text>
+        <Text style={styles.priceText}>Starts at <Text style={{ fontWeight: 'bold', color: COLORS.white }}>£{price}</Text></Text>
 
         <View style={styles.tagsContainer}>
-          {stylist.tags.map(tag => (
-            <View key={tag} style={styles.cardTag}>
+          {tags.map((tag, idx) => (
+            <View key={`${tag}-${idx}`} style={styles.cardTag}>
               <Text style={styles.cardTagText}>{tag}</Text>
             </View>
           ))}

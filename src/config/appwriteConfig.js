@@ -9,7 +9,7 @@ export const databases = new Databases(client);
 export const storage = new Storage(client);
 
 export const appwriteConfig = {
-    databaseId: '699b5076003d6a1e5004',
+    databaseId: '69d8e2130010bd3fbf52',
     storageId: '699b5359003c85dc59ce',
-    collectionId: '699b51c10026a40346ea',
+    collectionId: 'stylists',
 };

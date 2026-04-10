@@ -1,11 +1,12 @@
-import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useContext, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
 import { HomeHeader } from '../components/HomeHeader';
 import { FilterModal } from '../components/FilterModal';
 import { StylistCard } from '../components/StylistCard';
+import { databases, appwriteConfig } from '../config/appwriteConfig';
 
 const COLORS = {
   white: '#FFFFFF',
@@ -14,12 +15,6 @@ const COLORS = {
   darkPanel: '#090014',
 };
 
-const MOCK_STYLISTS = [
-  { id: '1', name: 'Nia Adebayo', rating: 4.9, price: 60, tags: ['4C Specialist', 'Natural Hair'], image: 'https://images.unsplash.com/photo-1531123414708-5beafff72fff?auto=format&fit=crop&w=300&q=80', latitude: 51.5274, longitude: -0.1278 },
-  { id: '2', name: 'Marcus Lee', rating: 4.8, price: 75, tags: ['Locs Expert', 'Retwists'], image: 'https://images.unsplash.com/photo-1506803682981-6e718a9ec3cb?auto=format&fit=crop&w=300&q=80', latitude: 51.5154, longitude: -0.1178 },
-  { id: '3', name: 'Anya Sharma', rating: 4.7, price: 100, tags: ['Braids', 'Protective Styles'], image: 'https://images.unsplash.com/photo-1542596594-649edbc13630?auto=format&fit=crop&w=300&q=80', latitude: 51.4934, longitude: -0.1378 },
-];
-
 export const ClientHomeScreen = () => {
   const { logout } = useContext(AuthContext);
   const [filterVisible, setFilterVisible] = useState(false);
@@ -27,6 +22,27 @@ export const ClientHomeScreen = () => {
   const [selectedServices, setSelectedServices] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeQuickTag, setActiveQuickTag] = useState('All');
+
+  const [stylists, setStylists] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStylists = async () => {
+      try {
+        const response = await databases.listDocuments(
+          appwriteConfig.databaseId,
+          appwriteConfig.collectionId
+        );
+        setStylists(response.documents);
+      } catch (error) {
+        console.error("Error fetching stylists:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStylists();
+  }, []);
 
   const toggleTexture = (texture) => {
     setSelectedTextures(prev =>
@@ -54,18 +70,23 @@ export const ClientHomeScreen = () => {
           longitudeDelta: 0.0421,
         }}
       >
-        {MOCK_STYLISTS.map(stylist => (
-          <Marker
-            key={stylist.id}
-            coordinate={{ latitude: stylist.latitude, longitude: stylist.longitude }}
-          >
-            <View style={styles.pinGlow}>
-              <View style={styles.mapPin}>
-                <Ionicons name="cut" size={14} color={COLORS.white} />
+        {stylists.map(stylist => {
+          if (!stylist.latitude || !stylist.longitude) return null;
+          return (
+            <Marker
+              key={stylist.$id || stylist.id}
+              coordinate={{ latitude: stylist.latitude, longitude: stylist.longitude }}
+              title={stylist.businessName}
+              description={`Starting at £${stylist.startingPrice}`}
+            >
+              <View style={styles.pinGlow}>
+                <View style={styles.mapPin}>
+                  <Ionicons name="cut" size={14} color={COLORS.white} />
+                </View>
               </View>
-            </View>
-          </Marker>
-        ))}
+            </Marker>
+          );
+        })}
       </MapView>
 
       <HomeHeader
@@ -83,17 +104,21 @@ export const ClientHomeScreen = () => {
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitleText}>Nearby Specialists</Text>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.carouselContainer}
-            snapToInterval={Dimensions.get('window').width * 0.75 + 15}
-            decelerationRate="fast"
-          >
-            {MOCK_STYLISTS.map(stylist => (
-              <StylistCard key={stylist.id} stylist={stylist} />
-            ))}
-          </ScrollView>
+          {isLoading ? (
+            <ActivityIndicator size="large" color={COLORS.white} style={{ marginVertical: 20 }} />
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.carouselContainer}
+              snapToInterval={Dimensions.get('window').width * 0.75 + 15}
+              decelerationRate="fast"
+            >
+              {stylists.map(stylist => (
+                <StylistCard key={stylist.$id || stylist.id} stylist={stylist} />
+              ))}
+            </ScrollView>
+          )}
         </View>
       </View>
 
