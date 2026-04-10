@@ -20,7 +20,8 @@ export const FilterModal = ({
   selectedTextures,
   toggleTexture,
   selectedServices,
-  toggleService
+  toggleService,
+  onApplyFilters
 }) => {
   const renderChip = (label, isSelected, onPress) => (
     <TouchableOpacity
@@ -74,7 +75,10 @@ export const FilterModal = ({
           <View style={styles.applyContainer}>
             <TouchableOpacity
               style={styles.applyButton}
-              onPress={() => setFilterVisible(false)}
+              onPress={() => {
+                if (onApplyFilters) onApplyFilters();
+                setFilterVisible(false);
+              }}
             >
               <Text style={styles.applyButtonText}>Apply Filters</Text>
             </TouchableOpacity>

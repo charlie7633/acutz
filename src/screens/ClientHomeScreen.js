@@ -7,6 +7,7 @@ import { HomeHeader } from '../components/HomeHeader';
 import { FilterModal } from '../components/FilterModal';
 import { StylistCard } from '../components/StylistCard';
 import { databases, appwriteConfig } from '../config/appwriteConfig';
+import { Query } from 'react-native-appwrite';
 
 const COLORS = {
   white: '#FFFFFF',
@@ -25,13 +26,24 @@ export const ClientHomeScreen = () => {
 
   const [stylists, setStylists] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeFilters, setActiveFilters] = useState({ hairTypes: [], services: [] });
 
   useEffect(() => {
     const fetchStylists = async () => {
+      setIsLoading(true);
       try {
+        const queries = [];
+        if (activeFilters.hairTypes && activeFilters.hairTypes.length > 0) {
+          queries.push(Query.contains('hairTypes', activeFilters.hairTypes));
+        }
+        if (activeFilters.services && activeFilters.services.length > 0) {
+          queries.push(Query.contains('services', activeFilters.services));
+        }
+
         const response = await databases.listDocuments(
           appwriteConfig.databaseId,
-          appwriteConfig.collectionId
+          appwriteConfig.collectionId,
+          queries.length > 0 ? queries : undefined
         );
         setStylists(response.documents);
       } catch (error) {
@@ -42,7 +54,7 @@ export const ClientHomeScreen = () => {
     };
 
     fetchStylists();
-  }, []);
+  }, [activeFilters]);
 
   const toggleTexture = (texture) => {
     setSelectedTextures(prev =>
@@ -129,6 +141,9 @@ export const ClientHomeScreen = () => {
         toggleTexture={toggleTexture}
         selectedServices={selectedServices}
         toggleService={toggleService}
+        onApplyFilters={() => {
+          setActiveFilters({ hairTypes: selectedTextures, services: selectedServices });
+        }}
       />
     </View>
   );
