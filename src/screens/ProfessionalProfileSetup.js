@@ -7,11 +7,13 @@ import {
   TouchableOpacity, 
   ScrollView, 
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { theme } from '../theme/theme';
 import { AuthContext } from '../context/AuthContext';
-import { databases, appwriteConfig } from '../config/appwriteConfig';
+import { databases, storage, appwriteConfig } from '../config/appwriteConfig';
 import { ID } from 'react-native-appwrite';
 import { ChipSelector } from '../components/ChipSelector';
 const hairTextures = ['1A-2C', '3A', '3B', '3C', '4A', '4B', '4C'];
@@ -23,7 +25,26 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
   const [startingPrice, setStartingPrice] = useState('');
   const [selectedTextures, setSelectedTextures] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
+  const [portfolioImage, setPortfolioImage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const pickImage = async () => {
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setPortfolioImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('ImagePicker Error:', error);
+      Alert.alert('Error', 'Failed to open image picker.');
+    }
+  };
 
   const toggleSelection = (item, selectedList, setSelectedList) => {
     if (selectedList.includes(item)) {
@@ -52,9 +73,29 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
     setIsSubmitting(true);
 
     try {
+      let finalImageUrl = null;
+
+      if (portfolioImage) {
+        const file = {
+          uri: portfolioImage,
+          name: `cover_${Date.now()}.jpg`,
+          type: 'image/jpeg',
+          size: 1024,
+        };
+
+        const uploadedFile = await storage.createFile(
+          appwriteConfig.photosBucketId, 
+          ID.unique(), 
+          file
+        );
+        
+        const fileViewUrl = storage.getFileView(appwriteConfig.photosBucketId, uploadedFile.$id);
+        finalImageUrl = fileViewUrl.href || fileViewUrl.toString();
+      }
+
       await databases.createDocument(
         appwriteConfig.databaseId,
-        'Stylists', // Writing to Stylists Collection Name string
+        appwriteConfig.collectionId, 
         ID.unique(),
         {
           userId: userId,
@@ -64,7 +105,8 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
           startingPrice: priceInt,
           latitude: 51.5274, // Dummy Coordinate 
           longitude: -0.1278, // Dummy Coordinate
-          rating: 0.0
+          rating: 0.0,
+          image: finalImageUrl // Append optional imageUrl securely
         }
       );
       
@@ -85,6 +127,14 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
           <Text style={styles.title}>Setup Your Profile</Text>
           <Text style={styles.subtitle}>Let clients know what you specialize in.</Text>
         </View>
+
+        <TouchableOpacity style={styles.imagePickerContainer} onPress={pickImage}>
+          {portfolioImage ? (
+            <Image source={{ uri: portfolioImage }} style={styles.previewImage} />
+          ) : (
+            <Text style={styles.imagePlaceholderText}>Tap to upload cover photo</Text>
+          )}
+        </TouchableOpacity>
 
         <View style={styles.inputSection}>
           <Text style={styles.inputLabel}>Business Name</Text>
@@ -152,6 +202,28 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: theme.spacing.xl,
+  },
+  imagePickerContainer: {
+    height: 150,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.l,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.l,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imagePlaceholderText: {
+    color: theme.colors.textMuted,
+    fontSize: 16,
+    fontWeight: '500',
   },
   title: {
     fontSize: 28,

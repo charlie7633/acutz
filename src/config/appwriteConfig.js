@@ -10,6 +10,6 @@ export const storage = new Storage(client);
 
 export const appwriteConfig = {
     databaseId: '69d8e2130010bd3fbf52',
-    storageId: '699b5359003c85dc59ce',
+    photosBucketId: '699b5359003c85dc59ce',
     collectionId: 'stylists',
 };
