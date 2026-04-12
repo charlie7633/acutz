@@ -179,7 +179,7 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
         {/* Edit Profile Button */}
         <TouchableOpacity 
           style={styles.editButton} 
-          onPress={() => navigation.navigate('ProfessionalSetup')}
+          onPress={() => navigation.navigate('ProfessionalSetup', { profile })}
         >
           <Ionicons name="pencil-outline" size={18} color={theme.colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.editButtonText}>Edit Profile</Text>

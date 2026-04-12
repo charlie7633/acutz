@@ -19,13 +19,16 @@ import { ChipSelector } from '../components/ChipSelector';
 const hairTextures = ['1A-2C', '3A', '3B', '3C', '4A', '4B', '4C'];
 const serviceTypes = ['Barber', 'Loctician', 'Hairdresser', 'Braider', 'Colorist'];
 
-export const ProfessionalProfileSetup = ({ navigation }) => {
+export const ProfessionalProfileSetup = ({ navigation, route }) => {
   const { user } = useContext(AuthContext);
-  const [businessName, setBusinessName] = useState('');
-  const [startingPrice, setStartingPrice] = useState('');
-  const [selectedTextures, setSelectedTextures] = useState([]);
-  const [selectedServices, setSelectedServices] = useState([]);
+  const existingProfile = route?.params?.profile || null;
+  const isEditMode = !!existingProfile;
+  const [businessName, setBusinessName] = useState(existingProfile?.businessName || '');
+  const [startingPrice, setStartingPrice] = useState(existingProfile?.startingPrice?.toString() || '');
+  const [selectedTextures, setSelectedTextures] = useState(existingProfile?.hairTypes || []);
+  const [selectedServices, setSelectedServices] = useState(existingProfile?.services || []);
   const [portfolioImage, setPortfolioImage] = useState(null);
+  const [existingImageUrl, setExistingImageUrl] = useState(existingProfile?.image || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const pickImage = async () => {
@@ -107,6 +110,9 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
         }
       }
 
+      // If no new image was picked, keep the existing one (edit mode)
+      const imageToSave = finalImageUrl || existingImageUrl;
+
       const documentPayload = {
         userId: userId,
         businessName: businessName,
@@ -115,18 +121,31 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
         startingPrice: priceInt,
         latitude: 51.5274,
         longitude: -0.1278,
-        rating: 0.0,
-        image: finalImageUrl
+        rating: isEditMode ? (existingProfile.rating || 0.0) : 0.0,
+        image: imageToSave
       };
-      await databases.createDocument(
-        appwriteConfig.databaseId,
-        appwriteConfig.collectionId, 
-        ID.unique(),
-        documentPayload
-      );
-      
-      Alert.alert('Success', 'Your professional profile has been saved successfully!');
-      // navigation.navigate('ProfessionalHomeScreen'); // Optional if using React Navigation later
+
+      if (isEditMode) {
+        // Update the existing document
+        await databases.updateDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.collectionId,
+          existingProfile.$id,
+          documentPayload
+        );
+        Alert.alert('Updated', 'Your profile has been updated successfully!');
+      } else {
+        // Create a new document
+        await databases.createDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.collectionId,
+          ID.unique(),
+          documentPayload
+        );
+        Alert.alert('Success', 'Your professional profile has been saved successfully!');
+      }
+
+      navigation.goBack();
     } catch (error) {
       console.error('Appwrite Error:', error);
       Alert.alert('Database Error', 'Could not save your profile. Please check your Appwrite connection and Stylists collection permissions.');
@@ -139,13 +158,15 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>Setup Your Profile</Text>
+          <Text style={styles.title}>{isEditMode ? 'Edit Your Profile' : 'Setup Your Profile'}</Text>
           <Text style={styles.subtitle}>Let clients know what you specialize in.</Text>
         </View>
 
         <TouchableOpacity style={styles.imagePickerContainer} onPress={pickImage}>
           {portfolioImage ? (
             <Image source={{ uri: portfolioImage.uri }} style={styles.previewImage} />
+          ) : existingImageUrl ? (
+            <Image source={{ uri: existingImageUrl }} style={styles.previewImage} />
           ) : (
             <Text style={styles.imagePlaceholderText}>Tap to upload cover photo</Text>
           )}
@@ -196,7 +217,7 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
           {isSubmitting ? (
             <ActivityIndicator color={theme.colors.text} size="small" />
           ) : (
-            <Text style={styles.submitButtonText}>Save Profile</Text>
+            <Text style={styles.submitButtonText}>{isEditMode ? 'Update Profile' : 'Save Profile'}</Text>
           )}
         </TouchableOpacity>
         
