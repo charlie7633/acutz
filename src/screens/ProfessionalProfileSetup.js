@@ -8,21 +8,39 @@ import {
   ScrollView, 
   Alert,
   ActivityIndicator,
-  Image
+  Image,
+  Modal,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import MapView, { Marker } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import { AuthContext } from '../context/AuthContext';
 import { databases, appwriteConfig } from '../config/appwriteConfig';
 import { ID } from 'react-native-appwrite';
 import { ChipSelector } from '../components/ChipSelector';
+
+const { width, height } = Dimensions.get('window');
 const hairTextures = ['1A-2C', '3A', '3B', '3C', '4A', '4B', '4C'];
 const serviceTypes = ['Barber', 'Loctician', 'Hairdresser', 'Braider', 'Colorist'];
+
+const DEFAULT_REGION = {
+  latitude: 51.5074,
+  longitude: -0.1278,
+  latitudeDelta: 0.05,
+  longitudeDelta: 0.05,
+};
 
 export const ProfessionalProfileSetup = ({ navigation, route }) => {
   const { user } = useContext(AuthContext);
   const existingProfile = route?.params?.profile || null;
   const isEditMode = !!existingProfile;
+
+  // Form State
   const [businessName, setBusinessName] = useState(existingProfile?.businessName || '');
   const [startingPrice, setStartingPrice] = useState(existingProfile?.startingPrice?.toString() || '');
   const [selectedTextures, setSelectedTextures] = useState(existingProfile?.hairTypes || []);
@@ -30,6 +48,26 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
   const [portfolioImage, setPortfolioImage] = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(existingProfile?.image || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Location State
+  const [location, setLocation] = useState(
+    existingProfile?.latitude && existingProfile?.longitude
+      ? { latitude: existingProfile.latitude, longitude: existingProfile.longitude }
+      : null
+  );
+  const [isMapVisible, setIsMapVisible] = useState(false);
+  const [addressQuery, setAddressQuery] = useState('');
+  const [mapRegion, setMapRegion] = useState(
+    existingProfile?.latitude && existingProfile?.longitude
+      ? {
+          latitude: existingProfile.latitude,
+          longitude: existingProfile.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }
+      : DEFAULT_REGION
+  );
+  const [isSearching, setIsSearching] = useState(false);
 
   const pickImage = async () => {
     try {
@@ -57,10 +95,83 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
     }
   };
 
+  // ─── MAP / LOCATION LOGIC ───
+  const openMapModal = async () => {
+    setIsMapVisible(true);
 
+    // If we already have a saved location, don't override it
+    if (location) return;
+
+    // Try to get the user's current position to center the map
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is needed to center the map. You can still search for an address or drag the pin.');
+        return;
+      }
+
+      const currentPosition = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const newRegion = {
+        latitude: currentPosition.coords.latitude,
+        longitude: currentPosition.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      setMapRegion(newRegion);
+      setLocation({
+        latitude: currentPosition.coords.latitude,
+        longitude: currentPosition.coords.longitude,
+      });
+    } catch (error) {
+      console.error('Location Error:', error);
+      // Silently fall back to default London region
+    }
+  };
+
+  const handleAddressSearch = async () => {
+    if (!addressQuery.trim()) return;
+
+    setIsSearching(true);
+    try {
+      const results = await Location.geocodeAsync(addressQuery);
+      if (results && results.length > 0) {
+        const { latitude, longitude } = results[0];
+        const newRegion = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        };
+        setMapRegion(newRegion);
+        setLocation({ latitude, longitude });
+      } else {
+        Alert.alert('Not Found', 'Could not find that address. Try a different search term.');
+      }
+    } catch (error) {
+      console.error('Geocode Error:', error);
+      Alert.alert('Search Error', 'Failed to search for the address.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleMarkerDragEnd = (e) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    setLocation({ latitude, longitude });
+  };
+
+  // ─── SAVE / UPDATE LOGIC ───
   const handleSaveProfile = async () => {
     if (!businessName.trim() || !startingPrice.trim() || selectedTextures.length === 0 || selectedServices.length === 0) {
       Alert.alert('Missing Fields', 'Please complete all fields to setup your profile.');
+      return;
+    }
+
+    if (!location) {
+      Alert.alert('Missing Location', 'Please set your business location using the map.');
       return;
     }
 
@@ -70,7 +181,6 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
       return;
     }
 
-    // Appwrite stores user ID on user.$id. Fallbacks provided for pure Auth UI setups.
     const userId = user?.uid || user?.$id || 'unknown_user';
 
     setIsSubmitting(true);
@@ -81,7 +191,6 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
       if (portfolioImage) {
         const fileId = ID.unique();
         
-        // Use React Native's native FormData + fetch for reliable file uploads
         const formData = new FormData();
         formData.append('fileId', fileId);
         formData.append('file', {
@@ -110,7 +219,6 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
         }
       }
 
-      // If no new image was picked, keep the existing one (edit mode)
       const imageToSave = finalImageUrl || existingImageUrl;
 
       const documentPayload = {
@@ -119,14 +227,13 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
         hairTypes: selectedTextures,
         services: selectedServices,
         startingPrice: priceInt,
-        latitude: 51.5274,
-        longitude: -0.1278,
+        latitude: location.latitude,
+        longitude: location.longitude,
         rating: isEditMode ? (existingProfile.rating || 0.0) : 0.0,
         image: imageToSave
       };
 
       if (isEditMode) {
-        // Update the existing document
         await databases.updateDocument(
           appwriteConfig.databaseId,
           appwriteConfig.collectionId,
@@ -135,7 +242,6 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
         );
         Alert.alert('Updated', 'Your profile has been updated successfully!');
       } else {
-        // Create a new document
         await databases.createDocument(
           appwriteConfig.databaseId,
           appwriteConfig.collectionId,
@@ -162,6 +268,7 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
           <Text style={styles.subtitle}>Let clients know what you specialize in.</Text>
         </View>
 
+        {/* Cover Image Picker */}
         <TouchableOpacity style={styles.imagePickerContainer} onPress={pickImage}>
           {portfolioImage ? (
             <Image source={{ uri: portfolioImage.uri }} style={styles.previewImage} />
@@ -172,6 +279,7 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
           )}
         </TouchableOpacity>
 
+        {/* Business Name */}
         <View style={styles.inputSection}>
           <Text style={styles.inputLabel}>Business Name</Text>
           <TextInput
@@ -183,8 +291,9 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
           />
         </View>
 
+        {/* Starting Price */}
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Starting Price ($)</Text>
+          <Text style={styles.inputLabel}>Starting Price (£)</Text>
           <TextInput
             style={styles.textInput}
             placeholder="e.g. 50"
@@ -193,6 +302,25 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
             value={startingPrice}
             onChangeText={setStartingPrice}
           />
+        </View>
+
+        {/* Location Picker */}
+        <View style={styles.inputSection}>
+          <Text style={styles.inputLabel}>Business Location</Text>
+          <TouchableOpacity 
+            style={[styles.locationButton, location && styles.locationButtonSet]} 
+            onPress={openMapModal}
+          >
+            <Ionicons 
+              name={location ? 'checkmark-circle' : 'location-outline'} 
+              size={20} 
+              color={location ? '#4CAF50' : theme.colors.secondary} 
+              style={{ marginRight: 10 }} 
+            />
+            <Text style={[styles.locationButtonText, location && styles.locationButtonTextSet]}>
+              {location ? '✅ Location Saved — Tap to change' : '📍 Set Business Location'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <ChipSelector 
@@ -222,6 +350,85 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
         </TouchableOpacity>
         
       </ScrollView>
+
+      {/* ─── MAP MODAL ─── */}
+      <Modal
+        visible={isMapVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Set Your Location</Text>
+            <TouchableOpacity onPress={() => setIsMapVisible(false)}>
+              <Ionicons name="close-circle" size={30} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Address Search Bar */}
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search address..."
+              placeholderTextColor={theme.colors.textMuted}
+              value={addressQuery}
+              onChangeText={setAddressQuery}
+              onSubmitEditing={handleAddressSearch}
+              returnKeyType="search"
+            />
+            <TouchableOpacity 
+              style={styles.searchButton} 
+              onPress={handleAddressSearch}
+              disabled={isSearching}
+            >
+              {isSearching ? (
+                <ActivityIndicator size="small" color={theme.colors.text} />
+              ) : (
+                <Ionicons name="search" size={20} color={theme.colors.text} />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.mapHint}>Drag the pin to your exact salon location</Text>
+
+          {/* Map */}
+          <View style={styles.mapWrapper}>
+            <MapView
+              style={styles.map}
+              region={mapRegion}
+              onRegionChangeComplete={setMapRegion}
+              userInterfaceStyle="dark"
+            >
+              <Marker
+                coordinate={location || { latitude: mapRegion.latitude, longitude: mapRegion.longitude }}
+                draggable
+                onDragEnd={handleMarkerDragEnd}
+                title="Your Salon"
+              >
+                <View style={styles.customPin}>
+                  <Ionicons name="cut" size={16} color={theme.colors.text} />
+                </View>
+              </Marker>
+            </MapView>
+          </View>
+
+          {/* Confirm Button */}
+          <TouchableOpacity 
+            style={styles.confirmLocationButton} 
+            onPress={() => {
+              if (!location) {
+                // If the user hasn't dragged the pin, use the current map center
+                setLocation({ latitude: mapRegion.latitude, longitude: mapRegion.longitude });
+              }
+              setIsMapVisible(false);
+            }}
+          >
+            <Ionicons name="checkmark-circle-outline" size={22} color={theme.colors.text} style={{ marginRight: 8 }} />
+            <Text style={styles.confirmLocationText}>Confirm Location</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -290,6 +497,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
+
+  // Location Button
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    height: 55,
+    borderRadius: theme.borderRadius.m,
+    paddingHorizontal: theme.spacing.m,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  locationButtonSet: {
+    borderColor: '#4CAF50',
+    backgroundColor: 'rgba(76, 175, 80, 0.08)',
+  },
+  locationButtonText: {
+    color: theme.colors.secondary,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  locationButtonTextSet: {
+    color: '#4CAF50',
+  },
+
+  // Submit
   submitButton: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.l,
@@ -307,5 +540,99 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: 18,
     fontWeight: 'bold',
-  }
+  },
+
+  // ─── MAP MODAL STYLES ───
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.l,
+    paddingTop: 60,
+    paddingBottom: theme.spacing.m,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.l,
+    marginBottom: theme.spacing.s,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    fontSize: 15,
+    height: 48,
+    borderRadius: theme.borderRadius.m,
+    paddingHorizontal: theme.spacing.m,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  searchButton: {
+    backgroundColor: theme.colors.primary,
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.m,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapHint: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: theme.spacing.s,
+  },
+  mapWrapper: {
+    flex: 1,
+    marginHorizontal: theme.spacing.l,
+    borderRadius: theme.borderRadius.l,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  customPin: {
+    backgroundColor: theme.colors.primary,
+    padding: 10,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: theme.colors.text,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  confirmLocationButton: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.primary,
+    marginHorizontal: theme.spacing.l,
+    marginVertical: theme.spacing.l,
+    height: 56,
+    borderRadius: theme.borderRadius.l,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  confirmLocationText: {
+    color: theme.colors.text,
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
 });
