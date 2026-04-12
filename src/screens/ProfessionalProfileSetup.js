@@ -11,10 +11,9 @@ import {
   Image
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { theme } from '../theme/theme';
 import { AuthContext } from '../context/AuthContext';
-import { databases, storage, appwriteConfig } from '../config/appwriteConfig';
+import { databases, appwriteConfig } from '../config/appwriteConfig';
 import { ID } from 'react-native-appwrite';
 import { ChipSelector } from '../components/ChipSelector';
 const hairTextures = ['1A-2C', '3A', '3B', '3C', '4A', '4B', '4C'];
@@ -77,39 +76,53 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
       let finalImageUrl = null;
 
       if (portfolioImage) {
-        // Expo compression destroys the filesize property, so we read the literal bytes physically.
-        const fileInfo = await FileSystem.getInfoAsync(portfolioImage.uri);
-
-        const file = {
+        const fileId = ID.unique();
+        
+        // Use React Native's native FormData + fetch for reliable file uploads
+        const formData = new FormData();
+        formData.append('fileId', fileId);
+        formData.append('file', {
           uri: portfolioImage.uri,
           name: portfolioImage.fileName || `cover_${Date.now()}.jpg`,
-          type: portfolioImage.mimeType || 'image/jpeg'
-        };
+          type: portfolioImage.mimeType || 'image/jpeg',
+        });
 
-        const uploadedFile = await storage.createFile(
-          appwriteConfig.photosBucketId, 
-          ID.unique(), 
-          file
+        const uploadResponse = await fetch(
+          `https://fra.cloud.appwrite.io/v1/storage/buckets/${appwriteConfig.photosBucketId}/files`,
+          {
+            method: 'POST',
+            headers: {
+              'X-Appwrite-Project': '699b4bcc001dba9897a1',
+            },
+            body: formData,
+          }
         );
-        
-        finalImageUrl = `https://fra.cloud.appwrite.io/v1/storage/buckets/${appwriteConfig.photosBucketId}/files/${uploadedFile.$id}/preview?width=600&height=400&project=699b4bcc001dba9897a1`;
+
+        const uploadedFile = await uploadResponse.json();
+
+        if (uploadResponse.ok && uploadedFile.$id) {
+          finalImageUrl = `https://fra.cloud.appwrite.io/v1/storage/buckets/${appwriteConfig.photosBucketId}/files/${uploadedFile.$id}/view?project=699b4bcc001dba9897a1`;
+        } else {
+          Alert.alert('Upload Error', 'Image upload failed. Profile will be saved without an image.');
+        }
       }
 
+      const documentPayload = {
+        userId: userId,
+        businessName: businessName,
+        hairTypes: selectedTextures,
+        services: selectedServices,
+        startingPrice: priceInt,
+        latitude: 51.5274,
+        longitude: -0.1278,
+        rating: 0.0,
+        image: finalImageUrl
+      };
       await databases.createDocument(
         appwriteConfig.databaseId,
         appwriteConfig.collectionId, 
         ID.unique(),
-        {
-          userId: userId,
-          businessName: businessName,
-          hairTypes: selectedTextures,
-          services: selectedServices,
-          startingPrice: priceInt,
-          latitude: 51.5274, // Dummy Coordinate 
-          longitude: -0.1278, // Dummy Coordinate
-          rating: 0.0,
-          image: finalImageUrl // Append optional imageUrl securely
-        }
+        documentPayload
       );
       
       Alert.alert('Success', 'Your professional profile has been saved successfully!');
