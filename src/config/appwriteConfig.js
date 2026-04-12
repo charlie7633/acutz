@@ -12,4 +12,5 @@ export const appwriteConfig = {
     databaseId: '69d8e2130010bd3fbf52',
     photosBucketId: '699b5359003c85dc59ce',
     collectionId: 'stylists',
+    appointmentsCollectionId: 'appointments',
 };

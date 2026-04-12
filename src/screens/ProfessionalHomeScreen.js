@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { 
   StyleSheet, Text, View, TouchableOpacity, 
-  ScrollView, ActivityIndicator, Image, Dimensions 
+  ScrollView, ActivityIndicator, Image, Dimensions, Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,6 +16,7 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
   const { logout, user } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [appointments, setAppointments] = useState([]);
 
   const fetchProfile = async () => {
     setIsLoading(true);
@@ -34,6 +35,8 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
 
       if (response.documents.length > 0) {
         setProfile(response.documents[0]);
+        // Fetch appointments for this professional
+        await fetchAppointments(userId);
       } else {
         setProfile(null);
       }
@@ -42,6 +45,40 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
       setProfile(null);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAppointments = async (professionalId) => {
+    try {
+      const response = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.appointmentsCollectionId,
+        [Query.equal('professionalId', professionalId)]
+      );
+      setAppointments(response.documents);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      setAppointments([]);
+    }
+  };
+
+  const updateAppointmentStatus = async (appointmentId, newStatus) => {
+    try {
+      await databases.updateDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.appointmentsCollectionId,
+        appointmentId,
+        { status: newStatus }
+      );
+      // Optimistically update local state
+      setAppointments(prev =>
+        prev.map(apt =>
+          apt.$id === appointmentId ? { ...apt, status: newStatus } : apt
+        )
+      );
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      Alert.alert('Error', 'Failed to update appointment status.');
     }
   };
 
@@ -184,6 +221,76 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
           <Ionicons name="pencil-outline" size={18} color={theme.colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
+
+        {/* ─── APPOINTMENTS SECTION ─── */}
+        <View style={styles.appointmentsSection}>
+          <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+
+          {appointments.length === 0 ? (
+            <View style={styles.noAppointmentsCard}>
+              <Ionicons name="calendar-outline" size={36} color={theme.colors.textMuted} />
+              <Text style={styles.noAppointmentsText}>You have no upcoming appointments.</Text>
+            </View>
+          ) : (
+            appointments.map((apt) => (
+              <View key={apt.$id} style={styles.appointmentCard}>
+                <View style={styles.appointmentHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.clientName}>{apt.clientName || 'Client'}</Text>
+                    <Text style={styles.serviceRequested}>{apt.serviceRequested || 'Service'}</Text>
+                  </View>
+                  {/* Status Badge */}
+                  {apt.status === 'Confirmed' && (
+                    <View style={[styles.statusBadge, styles.statusConfirmed]}>
+                      <Text style={[styles.statusBadgeText, { color: '#4CAF50' }]}>Confirmed</Text>
+                    </View>
+                  )}
+                  {apt.status === 'Declined' && (
+                    <View style={[styles.statusBadge, styles.statusDeclined]}>
+                      <Text style={[styles.statusBadgeText, { color: theme.colors.error }]}>Declined</Text>
+                    </View>
+                  )}
+                  {apt.status === 'Pending' && (
+                    <View style={[styles.statusBadge, styles.statusPending]}>
+                      <Text style={[styles.statusBadgeText, { color: '#FFC107' }]}>Pending</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.appointmentDetails}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="calendar" size={14} color={theme.colors.textMuted} />
+                    <Text style={styles.detailText}>{apt.appointmentDate || 'No date'}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="time" size={14} color={theme.colors.textMuted} />
+                    <Text style={styles.detailText}>{apt.appointmentTime || 'No time'}</Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons — Only for Pending */}
+                {apt.status === 'Pending' && (
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.acceptButton]}
+                      onPress={() => updateAppointmentStatus(apt.$id, 'Confirmed')}
+                    >
+                      <Ionicons name="checkmark-circle" size={18} color="#4CAF50" style={{ marginRight: 6 }} />
+                      <Text style={[styles.actionButtonText, { color: '#4CAF50' }]}>Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.declineButton]}
+                      onPress={() => updateAppointmentStatus(apt.$id, 'Declined')}
+                    >
+                      <Ionicons name="close-circle" size={18} color={theme.colors.error} style={{ marginRight: 6 }} />
+                      <Text style={[styles.actionButtonText, { color: theme.colors.error }]}>Decline</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))
+          )}
+        </View>
 
       </ScrollView>
     </View>
@@ -429,6 +536,115 @@ const styles = StyleSheet.create({
   editButtonText: {
     color: theme.colors.text,
     fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // ─── APPOINTMENTS ───
+  appointmentsSection: {
+    paddingHorizontal: theme.spacing.l,
+    marginTop: theme.spacing.xl,
+  },
+  noAppointmentsCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.l,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noAppointmentsText: {
+    color: theme.colors.textMuted,
+    fontSize: 15,
+    marginTop: theme.spacing.m,
+    fontStyle: 'italic',
+  },
+  appointmentCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.l,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.m,
+    marginBottom: theme.spacing.m,
+  },
+  appointmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing.s,
+  },
+  clientName: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  serviceRequested: {
+    fontSize: 14,
+    color: theme.colors.secondary,
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  statusConfirmed: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderColor: '#4CAF50',
+  },
+  statusDeclined: {
+    backgroundColor: 'rgba(255, 76, 76, 0.1)',
+    borderColor: theme.colors.error,
+  },
+  statusPending: {
+    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+    borderColor: '#FFC107',
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  appointmentDetails: {
+    flexDirection: 'row',
+    gap: 20,
+    marginBottom: theme.spacing.m,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailText: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: theme.spacing.m,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    height: 42,
+    borderRadius: theme.borderRadius.m,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  acceptButton: {
+    backgroundColor: 'rgba(76, 175, 80, 0.08)',
+    borderColor: '#4CAF50',
+  },
+  declineButton: {
+    backgroundColor: 'rgba(255, 76, 76, 0.08)',
+    borderColor: theme.colors.error,
+  },
+  actionButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });
