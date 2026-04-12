@@ -11,6 +11,7 @@ import {
   Image
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { theme } from '../theme/theme';
 import { AuthContext } from '../context/AuthContext';
 import { databases, storage, appwriteConfig } from '../config/appwriteConfig';
@@ -38,7 +39,7 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
       });
 
       if (!result.canceled) {
-        setPortfolioImage(result.assets[0].uri);
+        setPortfolioImage(result.assets[0]);
       }
     } catch (error) {
       console.error('ImagePicker Error:', error);
@@ -76,11 +77,13 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
       let finalImageUrl = null;
 
       if (portfolioImage) {
+        // Expo compression destroys the filesize property, so we read the literal bytes physically.
+        const fileInfo = await FileSystem.getInfoAsync(portfolioImage.uri);
+
         const file = {
-          uri: portfolioImage,
-          name: `cover_${Date.now()}.jpg`,
-          type: 'image/jpeg',
-          size: 1024,
+          uri: portfolioImage.uri,
+          name: portfolioImage.fileName || `cover_${Date.now()}.jpg`,
+          type: portfolioImage.mimeType || 'image/jpeg'
         };
 
         const uploadedFile = await storage.createFile(
@@ -89,8 +92,7 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
           file
         );
         
-        const fileViewUrl = storage.getFileView(appwriteConfig.photosBucketId, uploadedFile.$id);
-        finalImageUrl = fileViewUrl.href || fileViewUrl.toString();
+        finalImageUrl = `https://fra.cloud.appwrite.io/v1/storage/buckets/${appwriteConfig.photosBucketId}/files/${uploadedFile.$id}/preview?width=600&height=400&project=699b4bcc001dba9897a1`;
       }
 
       await databases.createDocument(
@@ -130,7 +132,7 @@ export const ProfessionalProfileSetup = ({ navigation }) => {
 
         <TouchableOpacity style={styles.imagePickerContainer} onPress={pickImage}>
           {portfolioImage ? (
-            <Image source={{ uri: portfolioImage }} style={styles.previewImage} />
+            <Image source={{ uri: portfolioImage.uri }} style={styles.previewImage} />
           ) : (
             <Text style={styles.imagePlaceholderText}>Tap to upload cover photo</Text>
           )}

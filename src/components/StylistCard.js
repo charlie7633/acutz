@@ -17,12 +17,15 @@ export const StylistCard = ({ stylist }) => {
   const rating = stylist.rating !== undefined ? stylist.rating.toFixed(1) : 'New';
   const tags = [...(stylist.hairTypes || []), ...(stylist.services || [])];
   
-  // Use a fallback image if no image URL is stored in DB yet
-  const imageUri = stylist.image || 'https://images.unsplash.com/photo-1542596594-649edbc13630?auto=format&fit=crop&w=300&q=80';
-
   return (
     <View style={styles.stylistCard}>
-      <Image source={{ uri: imageUri }} style={styles.cardImage} />
+      {stylist.image && typeof stylist.image === 'string' ? (
+        <Image source={{ uri: stylist.image }} style={styles.cardImage} />
+      ) : (
+        <View style={styles.placeholderImage}>
+           <Ionicons name="image-outline" size={40} color={COLORS.cardSecondary} />
+        </View>
+      )}
 
       <View style={styles.cardInfo}>
         <View style={styles.cardHeader}>
@@ -61,6 +64,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardImage: { width: '100%', height: 200, resizeMode: 'cover' },
+  placeholderImage: { width: '100%', height: 200, backgroundColor: COLORS.secondaryAccent1, justifyContent: 'center', alignItems: 'center' },
   cardInfo: { padding: 15 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 },
   stylistSubtext: { fontSize: 12, color: COLORS.textMuted, marginBottom: 2 },
