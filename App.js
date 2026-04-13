@@ -14,6 +14,7 @@ import { ClientHomeScreen } from './src/screens/ClientHomeScreen';
 import { ProfessionalHomeScreen } from './src/screens/ProfessionalHomeScreen';
 import { ProfessionalProfileSetup } from './src/screens/ProfessionalProfileSetup';
 import { StylistProfileScreen } from './src/screens/StylistProfileScreen';
+import { ClientAppointmentsScreen } from './src/screens/ClientAppointmentsScreen';
 
 // Theme
 import { theme } from './src/theme/theme';
@@ -47,6 +48,7 @@ const AppContent = () => {
             <>
               <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
               <Stack.Screen name="StylistProfile" component={StylistProfileScreen} />
+              <Stack.Screen name="ClientAppointments" component={ClientAppointmentsScreen} />
             </>
           )
         ) : (

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Dimensions, ActivityIndicator, TouchableOpacity } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
@@ -111,6 +111,18 @@ export const ClientHomeScreen = ({ navigation }) => {
         setActiveQuickTag={setActiveQuickTag}
       />
 
+      {/* MY APPOINTMENTS FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('ClientAppointments')}
+        activeOpacity={0.85}
+        accessibilityLabel="My Appointments"
+        accessibilityRole="button"
+      >
+        <Ionicons name="calendar" size={20} color={COLORS.white} />
+        <Text style={styles.fabText}>My Appointments</Text>
+      </TouchableOpacity>
+
       {/* BOTTOM SHEET / STYLIST RESULTS */}
       <View style={styles.bottomSheetContainer} pointerEvents="box-none">
         <View style={styles.resultsSheet}>
@@ -159,6 +171,30 @@ const styles = StyleSheet.create({
   map: { ...StyleSheet.absoluteFillObject },
   pinGlow: { backgroundColor: 'rgba(224, 170, 255, 0.25)', padding: 10, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
   mapPin: { backgroundColor: '#000000', padding: 10, borderRadius: 20, borderWidth: 2, borderColor: COLORS.secondaryAccent1, shadowColor: COLORS.secondaryAccent1, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10, elevation: 4 },
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 230,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#5A189A',
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 20,
+  },
+  fabText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 7,
+  },
   bottomSheetContainer: { position: 'absolute', bottom: 0, width: '100%' },
   resultsSheet: { backgroundColor: COLORS.darkPanel, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: 15, paddingBottom: 40, shadowColor: '#000', shadowOffset: { width: 0, height: -5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 10 },
   sheetHandle: { width: 40, height: 5, backgroundColor: '#333', borderRadius: 3, alignSelf: 'center', marginBottom: 15 },
