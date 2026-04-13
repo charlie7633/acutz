@@ -16,7 +16,7 @@ const COLORS = {
   darkPanel: '#090014',
 };
 
-export const ClientHomeScreen = () => {
+export const ClientHomeScreen = ({ navigation }) => {
   const { logout } = useContext(AuthContext);
   const [filterVisible, setFilterVisible] = useState(false);
   const [selectedTextures, setSelectedTextures] = useState([]);
@@ -90,6 +90,7 @@ export const ClientHomeScreen = () => {
               coordinate={{ latitude: stylist.latitude, longitude: stylist.longitude }}
               title={stylist.businessName}
               description={`Starting at £${stylist.startingPrice}`}
+              onCalloutPress={() => navigation.navigate('StylistProfile', { stylist })}
             >
               <View style={styles.pinGlow}>
                 <View style={styles.mapPin}>
@@ -127,7 +128,11 @@ export const ClientHomeScreen = () => {
               decelerationRate="fast"
             >
               {stylists.map(stylist => (
-                <StylistCard key={stylist.$id || stylist.id} stylist={stylist} />
+                <StylistCard
+                  key={stylist.$id || stylist.id}
+                  stylist={stylist}
+                  onPress={() => navigation.navigate('StylistProfile', { stylist })}
+                />
               ))}
             </ScrollView>
           )}

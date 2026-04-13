@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, Image, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Image, Dimensions, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const COLORS = {
@@ -10,7 +10,7 @@ const COLORS = {
   secondaryAccent1: '#5A189A',
 };
 
-export const StylistCard = ({ stylist }) => {
+export const StylistCard = ({ stylist, onPress }) => {
   // Safely extract database fields with fallbacks
   const name = stylist.businessName || 'Unknown Stylist';
   const price = stylist.startingPrice !== undefined ? stylist.startingPrice : '--';
@@ -18,7 +18,13 @@ export const StylistCard = ({ stylist }) => {
   const tags = [...(stylist.hairTypes || []), ...(stylist.services || [])];
   
   return (
-    <View style={styles.stylistCard}>
+    <TouchableOpacity
+      style={styles.stylistCard}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={`View profile for ${name}`}
+    >
       {stylist.image && typeof stylist.image === 'string' ? (
         <Image source={{ uri: stylist.image }} style={styles.cardImage} />
       ) : (
@@ -49,7 +55,7 @@ export const StylistCard = ({ stylist }) => {
           ))}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

@@ -13,6 +13,7 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { ClientHomeScreen } from './src/screens/ClientHomeScreen';
 import { ProfessionalHomeScreen } from './src/screens/ProfessionalHomeScreen';
 import { ProfessionalProfileSetup } from './src/screens/ProfessionalProfileSetup';
+import { StylistProfileScreen } from './src/screens/StylistProfileScreen';
 
 // Theme
 import { theme } from './src/theme/theme';
@@ -43,7 +44,10 @@ const AppContent = () => {
               <Stack.Screen name="ProfessionalSetup" component={ProfessionalProfileSetup} />
             </>
           ) : (
-            <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
+            <>
+              <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
+              <Stack.Screen name="StylistProfile" component={StylistProfileScreen} />
+            </>
           )
         ) : (
           <Stack.Screen name="Auth" component={AuthScreen} />
