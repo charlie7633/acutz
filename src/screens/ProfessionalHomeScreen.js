@@ -34,9 +34,11 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
       );
 
       if (response.documents.length > 0) {
-        setProfile(response.documents[0]);
-        // Fetch appointments for this professional
-        await fetchAppointments(userId);
+        const profileDoc = response.documents[0];
+        setProfile(profileDoc);
+        // Query appointments using the stylist's profile document $id,
+        // which is what the client stores as professionalId when booking.
+        await fetchAppointments(profileDoc.$id);
       } else {
         setProfile(null);
       }
@@ -123,7 +125,12 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButtonEmpty} onPress={logout}>
+        <TouchableOpacity
+          style={styles.logoutButtonEmpty}
+          onPress={async () => {
+            try { await logout(); } catch (e) { console.error('Logout error', e); }
+          }}
+        >
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
       </View>
@@ -159,7 +166,12 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.logoutButtonDash} onPress={logout}>
+            <TouchableOpacity
+              style={styles.logoutButtonDash}
+              onPress={async () => {
+                try { await logout(); } catch (e) { console.error('Logout error', e); }
+              }}
+            >
               <Ionicons name="log-out-outline" size={18} color={theme.colors.error} />
             </TouchableOpacity>
           </View>
