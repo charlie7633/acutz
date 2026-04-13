@@ -1,14 +1,29 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Dimensions, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useContext } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  Dimensions,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
+
+// Context
 import { AuthContext } from '../context/AuthContext';
+
+// Components
 import { HomeHeader } from '../components/HomeHeader';
 import { FilterModal } from '../components/FilterModal';
 import { StylistCard } from '../components/StylistCard';
-import { databases, appwriteConfig } from '../config/appwriteConfig';
-import { Query } from 'react-native-appwrite';
 
+// Custom hooks (Separation of Concerns)
+import { useStylists } from '../hooks/useStylists';
+import { useLocation } from '../hooks/useLocation';
+
+// ─── Colour palette (local to this screen) ────────────────────────────────
 const COLORS = {
   white: '#FFFFFF',
   brandAccent: '#10002B',
@@ -16,73 +31,76 @@ const COLORS = {
   darkPanel: '#090014',
 };
 
+// Default map region (central London) used when location is unavailable
+const DEFAULT_REGION = {
+  latitude: 51.5074,
+  longitude: -0.1278,
+  latitudeDelta: 0.0822,
+  longitudeDelta: 0.0421,
+};
+
+// ─── Screen ───────────────────────────────────────────────────────────────
+
+/**
+ * ClientHomeScreen
+ *
+ * Displays an interactive map of nearby stylists and a horizontal carousel
+ * of StylistCards in a bottom sheet.  All data-fetching logic is delegated
+ * to custom hooks to satisfy the Separation of Concerns requirement.
+ *
+ * @param {object} navigation - React Navigation navigation prop.
+ */
 export const ClientHomeScreen = ({ navigation }) => {
   const { logout } = useContext(AuthContext);
+
+  // ── UI state (filter / search) ─────────────────────────────────────────
   const [filterVisible, setFilterVisible] = useState(false);
   const [selectedTextures, setSelectedTextures] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeQuickTag, setActiveQuickTag] = useState('All');
-
-  const [stylists, setStylists] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState({ hairTypes: [], services: [] });
 
-  useEffect(() => {
-    const fetchStylists = async () => {
-      setIsLoading(true);
-      try {
-        const queries = [];
-        if (activeFilters.hairTypes && activeFilters.hairTypes.length > 0) {
-          queries.push(Query.contains('hairTypes', activeFilters.hairTypes));
-        }
-        if (activeFilters.services && activeFilters.services.length > 0) {
-          queries.push(Query.contains('services', activeFilters.services));
-        }
+  // ── Data hooks ─────────────────────────────────────────────────────────
+  /** GPS coordinates — requested on mount by useLocation */
+  const { location } = useLocation();
 
-        const response = await databases.listDocuments(
-          appwriteConfig.databaseId,
-          appwriteConfig.collectionId,
-          queries.length > 0 ? queries : undefined
-        );
-        setStylists(response.documents);
-      } catch (error) {
-        console.error("Error fetching stylists:", error);
-      } finally {
-        setIsLoading(false);
+  /** Stylist documents — re-fetched whenever activeFilters changes */
+  const { stylists, isLoading } = useStylists(activeFilters);
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  const toggleTexture = (texture) =>
+    setSelectedTextures((prev) =>
+      prev.includes(texture) ? prev.filter((t) => t !== texture) : [...prev, texture],
+    );
+
+  const toggleService = (service) =>
+    setSelectedServices((prev) =>
+      prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service],
+    );
+
+  /** Build the map's initial region from live GPS if available */
+  const mapRegion = location
+    ? {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.0822,
+        longitudeDelta: 0.0421,
       }
-    };
+    : DEFAULT_REGION;
 
-    fetchStylists();
-  }, [activeFilters]);
-
-  const toggleTexture = (texture) => {
-    setSelectedTextures(prev =>
-      prev.includes(texture) ? prev.filter(t => t !== texture) : [...prev, texture]
-    );
-  };
-
-  const toggleService = (service) => {
-    setSelectedServices(prev =>
-      prev.includes(service) ? prev.filter(s => s !== service) : [...prev, service]
-    );
-  };
-
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      {/* MAP BACKGROUND */}
+
+      {/* ── MAP BACKGROUND ── */}
       <MapView
         provider={PROVIDER_DEFAULT}
         userInterfaceStyle="dark"
         style={styles.map}
-        initialRegion={{
-          latitude: 51.5074,
-          longitude: -0.1278,
-          latitudeDelta: 0.0822,
-          longitudeDelta: 0.0421,
-        }}
+        initialRegion={mapRegion}
       >
-        {stylists.map(stylist => {
+        {stylists.map((stylist) => {
           if (!stylist.latitude || !stylist.longitude) return null;
           return (
             <Marker
@@ -102,6 +120,7 @@ export const ClientHomeScreen = ({ navigation }) => {
         })}
       </MapView>
 
+      {/* ── HEADER (search bar + quick tags + logout) ── */}
       <HomeHeader
         logout={logout}
         searchQuery={searchQuery}
@@ -111,7 +130,7 @@ export const ClientHomeScreen = ({ navigation }) => {
         setActiveQuickTag={setActiveQuickTag}
       />
 
-      {/* MY APPOINTMENTS FAB */}
+      {/* ── MY APPOINTMENTS FAB ── */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('ClientAppointments')}
@@ -123,14 +142,18 @@ export const ClientHomeScreen = ({ navigation }) => {
         <Text style={styles.fabText}>My Appointments</Text>
       </TouchableOpacity>
 
-      {/* BOTTOM SHEET / STYLIST RESULTS */}
+      {/* ── BOTTOM SHEET / STYLIST CAROUSEL ── */}
       <View style={styles.bottomSheetContainer} pointerEvents="box-none">
         <View style={styles.resultsSheet}>
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitleText}>Nearby Specialists</Text>
 
           {isLoading ? (
-            <ActivityIndicator size="large" color={COLORS.white} style={{ marginVertical: 20 }} />
+            <ActivityIndicator
+              size="large"
+              color={COLORS.white}
+              style={{ marginVertical: 20 }}
+            />
           ) : (
             <ScrollView
               horizontal
@@ -139,7 +162,7 @@ export const ClientHomeScreen = ({ navigation }) => {
               snapToInterval={Dimensions.get('window').width * 0.75 + 15}
               decelerationRate="fast"
             >
-              {stylists.map(stylist => (
+              {stylists.map((stylist) => (
                 <StylistCard
                   key={stylist.$id || stylist.id}
                   stylist={stylist}
@@ -151,6 +174,7 @@ export const ClientHomeScreen = ({ navigation }) => {
         </View>
       </View>
 
+      {/* ── FILTER MODAL ── */}
       <FilterModal
         filterVisible={filterVisible}
         setFilterVisible={setFilterVisible}
@@ -166,12 +190,33 @@ export const ClientHomeScreen = ({ navigation }) => {
   );
 };
 
+// ─── Styles ───────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.brandAccent },
   map: { ...StyleSheet.absoluteFillObject },
-  pinGlow: { backgroundColor: 'rgba(224, 170, 255, 0.25)', padding: 10, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
-  mapPin: { backgroundColor: '#000000', padding: 10, borderRadius: 20, borderWidth: 2, borderColor: COLORS.secondaryAccent1, shadowColor: COLORS.secondaryAccent1, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10, elevation: 4 },
-  // FAB
+
+  // Map pins
+  pinGlow: {
+    backgroundColor: 'rgba(224, 170, 255, 0.25)',
+    padding: 10,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapPin: {
+    backgroundColor: '#000000',
+    padding: 10,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: COLORS.secondaryAccent1,
+    shadowColor: COLORS.secondaryAccent1,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+
+  // Floating action button
   fab: {
     position: 'absolute',
     bottom: 230,
@@ -195,9 +240,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 7,
   },
+
+  // Bottom sheet
   bottomSheetContainer: { position: 'absolute', bottom: 0, width: '100%' },
-  resultsSheet: { backgroundColor: COLORS.darkPanel, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: 15, paddingBottom: 40, shadowColor: '#000', shadowOffset: { width: 0, height: -5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 10 },
-  sheetHandle: { width: 40, height: 5, backgroundColor: '#333', borderRadius: 3, alignSelf: 'center', marginBottom: 15 },
-  sheetTitleText: { color: COLORS.white, fontSize: 22, fontWeight: 'bold', marginLeft: 20, marginBottom: 20 },
-  carouselContainer: { paddingHorizontal: 20 }
+  resultsSheet: {
+    backgroundColor: COLORS.darkPanel,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingTop: 15,
+    paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#333',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 15,
+  },
+  sheetTitleText: {
+    color: COLORS.white,
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginLeft: 20,
+    marginBottom: 20,
+  },
+  carouselContainer: { paddingHorizontal: 20 },
 });
