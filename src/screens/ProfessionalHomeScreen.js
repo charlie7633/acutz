@@ -9,6 +9,7 @@ import { theme } from '../theme/theme';
 import { Query } from 'react-native-appwrite';
 import { databases, appwriteConfig } from '../config/appwriteConfig';
 import { AuthContext } from '../context/AuthContext';
+import { useAppointments } from '../hooks/useAppointments';
 
 const { width } = Dimensions.get('window');
 
@@ -16,7 +17,8 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
   const { logout, user } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [appointments, setAppointments] = useState([]);
+  
+  const { appointments, fetchAppointments, updateAppointmentStatus } = useAppointments();
 
   const fetchProfile = async () => {
     setIsLoading(true);
@@ -38,7 +40,7 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
         setProfile(profileDoc);
         // Query appointments using the stylist's profile document $id,
         // which is what the client stores as professionalId when booking.
-        await fetchAppointments(profileDoc.$id);
+        await fetchAppointments('professional', profileDoc.$id);
       } else {
         setProfile(null);
       }
@@ -47,40 +49,6 @@ export const ProfessionalHomeScreen = ({ navigation }) => {
       setProfile(null);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchAppointments = async (professionalId) => {
-    try {
-      const response = await databases.listDocuments(
-        appwriteConfig.databaseId,
-        appwriteConfig.appointmentsCollectionId,
-        [Query.equal('professionalId', professionalId)]
-      );
-      setAppointments(response.documents);
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-      setAppointments([]);
-    }
-  };
-
-  const updateAppointmentStatus = async (appointmentId, newStatus) => {
-    try {
-      await databases.updateDocument(
-        appwriteConfig.databaseId,
-        appwriteConfig.appointmentsCollectionId,
-        appointmentId,
-        { status: newStatus }
-      );
-      // Optimistically update local state
-      setAppointments(prev =>
-        prev.map(apt =>
-          apt.$id === appointmentId ? { ...apt, status: newStatus } : apt
-        )
-      );
-    } catch (error) {
-      console.error('Error updating appointment:', error);
-      Alert.alert('Error', 'Failed to update appointment status.');
     }
   };
 

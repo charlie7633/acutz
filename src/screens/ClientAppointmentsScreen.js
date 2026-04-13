@@ -12,9 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { Query } from 'react-native-appwrite';
 import { AuthContext } from '../context/AuthContext';
-import { databases, appwriteConfig } from '../config/appwriteConfig';
+import { useAppointments } from '../hooks/useAppointments';
 import { theme } from '../theme/theme';
 
 const C = theme.colors;
@@ -104,46 +103,33 @@ const AppointmentCard = ({ item }) => (
  */
 export const ClientAppointmentsScreen = ({ navigation }) => {
   const { user } = useContext(AuthContext);
-  const [appointments, setAppointments] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { appointments, isLoading, fetchAppointments } = useAppointments();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
-  const fetchAppointments = useCallback(async (silent = false) => {
-    if (!silent) setIsLoading(true);
-    try {
-      const response = await databases.listDocuments(
-        appwriteConfig.databaseId,
-        appwriteConfig.appointmentsCollectionId,
-        [
-          Query.equal('clientId', user.$id),
-          Query.orderDesc('$createdAt'),   // newest first
-        ],
-      );
-      setAppointments(response.documents);
-    } catch (error) {
-      console.error('Error fetching client appointments:', error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [user.$id]);
-
+  
   // Fetch on first mount
   useEffect(() => {
-    fetchAppointments();
-  }, [fetchAppointments]);
+    if (user?.$id) {
+      fetchAppointments('client', user.$id);
+    }
+  }, [fetchAppointments, user?.$id]);
 
   // Re-fetch every time this screen comes into focus (e.g. after booking)
   useFocusEffect(
     useCallback(() => {
-      fetchAppointments(true);
-    }, [fetchAppointments]),
+      if (user?.$id) {
+        fetchAppointments('client', user.$id, true);
+      }
+    }, [fetchAppointments, user?.$id]),
   );
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setIsRefreshing(true);
-    fetchAppointments(true);
+    if (user?.$id) {
+      await fetchAppointments('client', user.$id, true);
+    }
+    setIsRefreshing(false);
   };
 
   // ── Loading ────────────────────────────────────────────────────────────
