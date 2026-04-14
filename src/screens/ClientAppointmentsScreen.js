@@ -15,81 +15,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
 import { useAppointments } from '../hooks/useAppointments';
 import { theme } from '../theme/theme';
+import { AppointmentCard } from '../components/AppointmentCard';
 
 const C = theme.colors;
-
-// ─── Status badge config ───────────────────────────────────────────────────
-const STATUS_CONFIG = {
-  Pending: {
-    label: 'Pending',
-    icon: 'time-outline',
-    color: '#FFC107',
-    bg: 'rgba(255, 193, 7, 0.12)',
-    border: 'rgba(255, 193, 7, 0.4)',
-  },
-  Confirmed: {
-    label: 'Confirmed',
-    icon: 'checkmark-circle-outline',
-    color: '#4CAF50',
-    bg: 'rgba(76, 175, 80, 0.12)',
-    border: 'rgba(76, 175, 80, 0.4)',
-  },
-  Declined: {
-    label: 'Declined',
-    icon: 'close-circle-outline',
-    color: C.error,
-    bg: 'rgba(255, 76, 76, 0.12)',
-    border: 'rgba(255, 76, 76, 0.4)',
-  },
-};
-
-// ─── Sub-components ────────────────────────────────────────────────────────
-
-/**
- * Coloured pill badge showing the appointment status.
- */
-const StatusBadge = ({ status }) => {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pending;
-  return (
-    <View style={[styles.badge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
-      <Ionicons name={cfg.icon} size={13} color={cfg.color} style={{ marginRight: 4 }} />
-      <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
-    </View>
-  );
-};
-
-/**
- * A single appointment card shown in the list.
- */
-const AppointmentCard = ({ item }) => (
-  <View style={styles.card}>
-    {/* Top row: service name + status badge */}
-    <View style={styles.cardHeader}>
-      <View style={styles.serviceIconWrap}>
-        <Ionicons name="cut" size={18} color={C.primary} />
-      </View>
-      <Text style={styles.serviceName} numberOfLines={1}>
-        {item.serviceRequested || 'Service'}
-      </Text>
-      <StatusBadge status={item.status} />
-    </View>
-
-    {/* Divider */}
-    <View style={styles.cardDivider} />
-
-    {/* Date & time row */}
-    <View style={styles.cardMeta}>
-      <View style={styles.metaItem}>
-        <Ionicons name="calendar-outline" size={14} color={C.textMuted} />
-        <Text style={styles.metaText}>{item.appointmentDate || '—'}</Text>
-      </View>
-      <View style={styles.metaItem}>
-        <Ionicons name="time-outline" size={14} color={C.textMuted} />
-        <Text style={styles.metaText}>{item.appointmentTime || '—'}</Text>
-      </View>
-    </View>
-  </View>
-);
 
 // ─── Main screen ───────────────────────────────────────────────────────────
 
@@ -267,75 +195,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 32,
-  },
-
-  // Card
-  card: {
-    backgroundColor: C.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    paddingBottom: 12,
-  },
-  serviceIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(157, 78, 221, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  serviceName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    color: C.text,
-    marginRight: 8,
-  },
-
-  // Badge
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  // Card meta row
-  cardDivider: {
-    height: 1,
-    backgroundColor: C.border,
-    marginHorizontal: 16,
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 20,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 13,
-    color: C.textMuted,
-    fontWeight: '500',
   },
 
   // Loading

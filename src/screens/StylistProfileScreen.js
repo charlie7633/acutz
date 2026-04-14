@@ -15,10 +15,10 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { ID } from 'react-native-appwrite';
 import { AuthContext } from '../context/AuthContext';
-import { databases, appwriteConfig } from '../config/appwriteConfig';
 import { theme } from '../theme/theme';
+import { useBooking } from '../hooks/useBooking';
+import { BookingModal } from '../components/BookingModal';
 
 // ---------------------------------------------------------------------------
 // Colour aliases
@@ -26,67 +26,8 @@ import { theme } from '../theme/theme';
 const C = theme.colors;
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Format a Date object → "YYYY-MM-DD" */
-const formatDate = (date) => {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
-
-/** Format a Date object → "HH:MM" (24-hour) */
-const formatTime = (date) => {
-  const h = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
-  return `${h}:${min}`;
-};
-
-// ---------------------------------------------------------------------------
 // Static display Chip (profile page)
 // ---------------------------------------------------------------------------
-const Chip = ({ label }) => (
-  <View style={styles.chip}>
-    <Text style={styles.chipText}>{label}</Text>
-  </View>
-);
-
-// ---------------------------------------------------------------------------
-// Selectable service chip (booking modal)
-// ---------------------------------------------------------------------------
-const ServiceChip = ({ label, selected, onPress }) => (
-  <TouchableOpacity
-    style={[styles.serviceChip, selected && styles.serviceChipSelected]}
-    onPress={onPress}
-    activeOpacity={0.75}
-    accessibilityRole="radio"
-    accessibilityState={{ selected }}
-    accessibilityLabel={label}
-  >
-    {selected && (
-      <Ionicons name="checkmark-circle" size={14} color={C.text} style={{ marginRight: 5 }} />
-    )}
-    <Text style={[styles.serviceChipText, selected && styles.serviceChipTextSelected]}>
-      {label}
-    </Text>
-  </TouchableOpacity>
-);
-
-// ---------------------------------------------------------------------------
-// Tappable row that opens a DateTimePicker
-// ---------------------------------------------------------------------------
-const PickerRow = ({ label, icon, displayValue, onPress }) => (
-  <TouchableOpacity style={styles.pickerRow} onPress={onPress} activeOpacity={0.8}>
-    <Ionicons name={icon} size={18} color={C.primary} style={{ marginRight: 10 }} />
-    <View style={{ flex: 1 }}>
-      <Text style={styles.pickerRowLabel}>{label}</Text>
-      <Text style={styles.pickerRowValue}>{displayValue}</Text>
-    </View>
-    <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
-  </TouchableOpacity>
-);
 
 // ---------------------------------------------------------------------------
 // StylistProfileScreen
@@ -101,108 +42,26 @@ const PickerRow = ({ label, icon, displayValue, onPress }) => (
 export const StylistProfileScreen = ({ route, navigation }) => {
   const { stylist } = route.params;
   const { user } = useContext(AuthContext);
-
-  // ── Booking modal visibility ───────────────────────────────────────────
   const [modalVisible, setModalVisible] = useState(false);
+  const { isSubmitting, submitBooking } = useBooking();
 
-  // ── Service selection (from stylist's own list) ────────────────────────
-  const [serviceRequested, setServiceRequested] = useState('');
-
-  // ── Date picker state ──────────────────────────────────────────────────
-  const [appointmentDate, setAppointmentDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
-  // ── Time picker state ──────────────────────────────────────────────────
-  const [appointmentTime, setAppointmentTime] = useState(new Date());
-  const [showTimePicker, setShowTimePicker] = useState(false);
-
-  // ── Submit state ───────────────────────────────────────────────────────
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // ── Derived display values ─────────────────────────────────────────────
   const name = stylist.businessName || 'Unknown Stylist';
   const price = stylist.startingPrice !== undefined ? stylist.startingPrice : '--';
-  const rating =
-    stylist.rating !== undefined ? Number(stylist.rating).toFixed(1) : 'New';
+  const rating = stylist.rating !== undefined ? Number(stylist.rating).toFixed(1) : 'New';
   const hairTypes = stylist.hairTypes || [];
   const services = stylist.services || [];
 
-  // ── Date/time picker handlers ──────────────────────────────────────────
-  const onDateChange = (event, selected) => {
-    // On Android, dismiss after selection; on iOS the picker stays inline.
-    if (Platform.OS === 'android') setShowDatePicker(false);
-    if (selected) setAppointmentDate(selected);
-  };
-
-  const onTimeChange = (event, selected) => {
-    if (Platform.OS === 'android') setShowTimePicker(false);
-    if (selected) setAppointmentTime(selected);
-  };
-
-  // On iOS we show the picker inline inside the modal.
-  // On Android the native dialog appears and dismisses itself.
-  const handleDateRowPress = () => {
-    setShowTimePicker(false); // close time if open
-    setShowDatePicker(true);
-  };
-
-  const handleTimeRowPress = () => {
-    setShowDatePicker(false); // close date if open
-    setShowTimePicker(true);
-  };
-
-  // ── Reset and close modal ──────────────────────────────────────────────
-  const closeModal = () => {
-    setServiceRequested('');
-    setAppointmentDate(new Date());
-    setAppointmentTime(new Date());
-    setShowDatePicker(false);
-    setShowTimePicker(false);
-    setModalVisible(false);
-  };
-
-  // ── Booking submit ─────────────────────────────────────────────────────
-  /**
-   * Validates the modal selections and creates an Appointments document in
-   * Appwrite.  Shows a success alert on completion and closes the modal, or
-   * surfaces an error alert if the request fails.
-   */
-  const handleBookingSubmit = async () => {
-    if (!serviceRequested) {
-      Alert.alert('Missing Service', 'Please select a service before confirming.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        professionalId: stylist.$id,
-        clientId: user.$id,
-        clientName: user.name || 'Acutz Client',
-        serviceRequested,
-        appointmentDate: formatDate(appointmentDate),
-        appointmentTime: formatTime(appointmentTime),
-        status: 'Pending',
-      };
-
-      await databases.createDocument(
-        appwriteConfig.databaseId,
-        appwriteConfig.appointmentsCollectionId,
-        ID.unique(),
-        payload,
-      );
-
-      closeModal();
-      Alert.alert('Success', 'Booking request sent!');
-    } catch (error) {
-      console.error('Booking submission error:', error);
-      Alert.alert(
-        'Booking Failed',
-        error?.message || 'Something went wrong. Please try again.',
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleBookingSubmit = (serviceRequested, date, time, onSuccess) => {
+    const payload = {
+      professionalId: stylist.$id,
+      clientId: user.$id,
+      clientName: user.name || 'Acutz Client',
+      serviceRequested,
+      appointmentDate: date,
+      appointmentTime: time,
+      status: 'Pending',
+    };
+    submitBooking(payload, onSuccess);
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -299,103 +158,14 @@ export const StylistProfileScreen = ({ route, navigation }) => {
       </View>
 
       {/* ── BOOKING MODAL ── */}
-      <Modal
+      <BookingModal 
         visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={closeModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            {/* Drag handle */}
-            <View style={styles.modalHandle} />
-
-            {/* Modal header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Book with {name}</Text>
-              <TouchableOpacity
-                onPress={closeModal}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name="close" size={24} color={C.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            {/* ── 1. SELECT SERVICE ── */}
-            <Text style={styles.inputLabel}>Select a Service</Text>
-            {services.length > 0 ? (
-              <View style={styles.serviceChipRow}>
-                {services.map((sv, i) => (
-                  <ServiceChip
-                    key={`modal-sv-${i}`}
-                    label={sv}
-                    selected={serviceRequested === sv}
-                    onPress={() => setServiceRequested(sv)}
-                  />
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.noServicesText}>No services listed by this stylist.</Text>
-            )}
-
-            {/* ── 2. DATE PICKER ── */}
-            <Text style={styles.inputLabel}>Preferred Date</Text>
-            <PickerRow
-              label="Date"
-              icon="calendar-outline"
-              displayValue={formatDate(appointmentDate)}
-              onPress={handleDateRowPress}
-            />
-            {showDatePicker && (
-              <DateTimePicker
-                value={appointmentDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                minimumDate={new Date()}
-                onChange={onDateChange}
-                themeVariant="dark"
-                accentColor={C.primary}
-                style={styles.nativePicker}
-              />
-            )}
-
-            {/* ── 3. TIME PICKER ── */}
-            <Text style={styles.inputLabel}>Preferred Time</Text>
-            <PickerRow
-              label="Time"
-              icon="time-outline"
-              displayValue={formatTime(appointmentTime)}
-              onPress={handleTimeRowPress}
-            />
-            {showTimePicker && (
-              <DateTimePicker
-                value={appointmentTime}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                is24Hour
-                onChange={onTimeChange}
-                themeVariant="dark"
-                accentColor={C.primary}
-                style={styles.nativePicker}
-              />
-            )}
-
-            {/* ── CONFIRM ── */}
-            <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-              onPress={handleBookingSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.85}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={C.text} />
-              ) : (
-                <Text style={styles.submitButtonText}>Confirm Booking</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setModalVisible(false)}
+        stylistName={name}
+        services={services}
+        onSubmit={handleBookingSubmit}
+        isSubmitting={isSubmitting}
+      />
     </SafeAreaView>
   );
 };
@@ -524,101 +294,4 @@ const styles = StyleSheet.create({
   },
   ctaButtonText: { color: C.text, fontSize: 17, fontWeight: '700', letterSpacing: 0.5 },
 
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.65)',
-  },
-  modalSheet: {
-    backgroundColor: C.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 44,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: C.border,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: C.text },
-
-  // Labels
-  inputLabel: {
-    fontSize: 12,
-    color: C.textMuted,
-    marginBottom: 8,
-    marginTop: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-
-  // Selectable service chips (modal)
-  serviceChipRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  serviceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: C.background,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  serviceChipSelected: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
-  },
-  serviceChipText: { fontSize: 14, color: C.textMuted, fontWeight: '600' },
-  serviceChipTextSelected: { color: C.text },
-
-  noServicesText: { fontSize: 14, color: C.textMuted, fontStyle: 'italic' },
-
-  // Picker rows (tappable date / time rows)
-  pickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: C.background,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  pickerRowLabel: { fontSize: 11, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
-  pickerRowValue: { fontSize: 17, color: C.text, fontWeight: '600', marginTop: 2 },
-
-  // Native DateTimePicker wrapper
-  nativePicker: {
-    marginTop: 8,
-    backgroundColor: 'transparent',
-  },
-
-  // Submit
-  submitButton: {
-    backgroundColor: C.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 24,
-    shadowColor: C.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { color: C.text, fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
 });
