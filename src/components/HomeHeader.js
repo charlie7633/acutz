@@ -1,6 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { theme } from '../theme/theme';
 
 const COLORS = {
   white: '#FFFFFF',
@@ -11,16 +13,14 @@ const COLORS = {
   glassOverlay: 'rgba(90, 24, 154, 0.35)',
 };
 
-const quickTags = ['All', '4C Expert', '3B', 'Locs', 'Braids', 'Curly', 'Coily'];
-
 export const HomeHeader = ({
   logout,
   searchQuery,
   setSearchQuery,
   setFilterVisible,
-  activeQuickTag,
-  setActiveQuickTag
 }) => {
+  const navigation = useNavigation();
+
   return (
     <SafeAreaView style={styles.headerContainer} pointerEvents="box-none">
       <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
@@ -46,27 +46,12 @@ export const HomeHeader = ({
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.quickTagsScrollView}
-        contentContainerStyle={{ paddingRight: 20 }}
+      <TouchableOpacity
+        style={styles.appointmentsBtn}
+        onPress={() => navigation.navigate('ClientAppointments')}
       >
-        {quickTags.map(tag => {
-          const isActive = activeQuickTag === tag;
-          return (
-            <TouchableOpacity
-              key={tag}
-              style={[styles.quickTag, isActive && styles.quickTagActive]}
-              onPress={() => setActiveQuickTag(tag)}
-            >
-              <Text style={[styles.quickTagText, isActive && styles.quickTagTextActive]}>
-                {tag}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+        <Text style={styles.appointmentsBtnText}>📅 View My Appointments</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -79,9 +64,6 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 16, color: COLORS.white },
   searchIcon: { marginLeft: 10 },
   filterBtn: { backgroundColor: COLORS.glassOverlay, borderWidth: 1, borderColor: COLORS.secondaryAccent2, width: 50, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
-  quickTagsScrollView: { flexDirection: 'row' },
-  quickTag: { backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: COLORS.secondaryAccent1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginRight: 10 },
-  quickTagActive: { backgroundColor: COLORS.cardSecondary, borderColor: COLORS.cardSecondary },
-  quickTagText: { color: '#D1D1D1', fontWeight: '500', fontSize: 14 },
-  quickTagTextActive: { color: COLORS.brandAccent, fontWeight: 'bold' }
+  appointmentsBtn: { backgroundColor: theme.colors.primary, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, alignSelf: 'flex-start', shadowColor: theme.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
+  appointmentsBtnText: { color: theme.colors.text, fontWeight: 'bold', fontSize: 15, letterSpacing: 0.5 }
 });

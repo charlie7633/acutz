@@ -58,7 +58,6 @@ export const ClientHomeScreen = ({ navigation }) => {
   const [selectedTextures, setSelectedTextures] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeQuickTag, setActiveQuickTag] = useState('All');
   const [activeFilters, setActiveFilters] = useState({ hairTypes: [], services: [] });
 
   // ── Data hooks ─────────────────────────────────────────────────────────
@@ -120,27 +119,13 @@ export const ClientHomeScreen = ({ navigation }) => {
         })}
       </MapView>
 
-      {/* ── HEADER (search bar + quick tags + logout) ── */}
+      {/* ── HEADER (search bar + logout) ── */}
       <HomeHeader
         logout={logout}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         setFilterVisible={setFilterVisible}
-        activeQuickTag={activeQuickTag}
-        setActiveQuickTag={setActiveQuickTag}
       />
-
-      {/* ── MY APPOINTMENTS FAB ── */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('ClientAppointments')}
-        activeOpacity={0.85}
-        accessibilityLabel="My Appointments"
-        accessibilityRole="button"
-      >
-        <Ionicons name="calendar" size={20} color={COLORS.white} />
-        <Text style={styles.fabText}>My Appointments</Text>
-      </TouchableOpacity>
 
       {/* ── BOTTOM SHEET / STYLIST CAROUSEL ── */}
       <View style={styles.bottomSheetContainer} pointerEvents="box-none">
@@ -214,31 +199,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 10,
     elevation: 4,
-  },
-
-  // Floating action button
-  fab: {
-    position: 'absolute',
-    bottom: 230,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#5A189A',
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 20,
-  },
-  fabText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '700',
-    marginLeft: 7,
   },
 
   // Bottom sheet
