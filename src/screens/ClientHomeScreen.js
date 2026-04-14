@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,6 +7,8 @@ import {
   Dimensions,
   ActivityIndicator,
   TouchableOpacity,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +54,35 @@ const DEFAULT_REGION = {
  */
 export const ClientHomeScreen = ({ navigation }) => {
   const { logout } = useContext(AuthContext);
+
+  // ── Swipe sheet state ──────────────────────────────────────────────────
+  const translateY = useRef(new Animated.Value(0)).current;
+  const isCollapsed = useRef(false);
+  const COLLAPSED_HEIGHT = 280; // approximate height to hide cards
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 5,
+      onPanResponderMove: (_, gestureState) => {
+        let newY = gestureState.dy;
+        if (isCollapsed.current) newY += COLLAPSED_HEIGHT;
+        if (newY < 0) newY = 0;
+        translateY.setValue(newY);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.vy > 0.5 || gestureState.dy > 50) {
+          isCollapsed.current = true;
+          Animated.spring(translateY, { toValue: COLLAPSED_HEIGHT, useNativeDriver: true }).start();
+        } else if (gestureState.vy < -0.5 || gestureState.dy < -50) {
+          isCollapsed.current = false;
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+        } else {
+          Animated.spring(translateY, { toValue: isCollapsed.current ? COLLAPSED_HEIGHT : 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
 
   // ── UI state (filter / search) ─────────────────────────────────────────
   const [filterVisible, setFilterVisible] = useState(false);
@@ -128,10 +159,12 @@ export const ClientHomeScreen = ({ navigation }) => {
       />
 
       {/* ── BOTTOM SHEET / STYLIST CAROUSEL ── */}
-      <View style={styles.bottomSheetContainer} pointerEvents="box-none">
+      <Animated.View style={[styles.bottomSheetContainer, { transform: [{ translateY }] }]} pointerEvents="box-none">
         <View style={styles.resultsSheet}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitleText}>Nearby Specialists</Text>
+          <View {...panResponder.panHandlers} style={styles.dragArea}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitleText}>Nearby Specialists</Text>
+          </View>
 
           {isLoading ? (
             <ActivityIndicator
@@ -157,7 +190,7 @@ export const ClientHomeScreen = ({ navigation }) => {
             </ScrollView>
           )}
         </View>
-      </View>
+      </Animated.View>
 
       {/* ── FILTER MODAL ── */}
       <FilterModal
@@ -207,13 +240,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.darkPanel,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingTop: 15,
     paddingBottom: 40,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -5 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 10,
+  },
+  dragArea: {
+    paddingTop: 15,
+    backgroundColor: 'transparent',
   },
   sheetHandle: {
     width: 40,
