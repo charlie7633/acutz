@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { databases, storage, appwriteConfig } from '../config/appwriteConfig';
-import { ID } from 'react-native-appwrite';
+import { ID, Permission, Role } from 'react-native-appwrite';
 
 export const useProfileManager = () => {
   const [isSaving, setIsSaving] = useState(false);
@@ -16,22 +16,28 @@ export const useProfileManager = () => {
           uri: portfolioImageUri.uri,
           name: portfolioImageUri.fileName || `cover_${Date.now()}.jpg`,
           type: portfolioImageUri.mimeType || 'image/jpeg',
-          size: portfolioImageUri.fileSize || 0,
+          size: portfolioImageUri.fileSize || Number(portfolioImageUri.size) || 0,
         };
 
-        // Upload to Appwrite storage
+        const filePermissions = [
+          Permission.read(Role.any()),
+          Permission.update(Role.user(profileData.userId)),
+          Permission.delete(Role.user(profileData.userId)),
+        ];
+
+        // Upload to Appwrite storage (with explicit size and permissions restored)
         const uploadedFile = await storage.createFile(
           appwriteConfig.photosBucketId,
           fileId,
-          fileToUpload
+          fileToUpload,
+          filePermissions
         );
 
-        if (uploadedFile.$id) {
-          // Get the resulting View URL
-          const result = storage.getFileView(appwriteConfig.photosBucketId, uploadedFile.$id);
-          finalImageUrl = result?.href || result.toString();
+        if (uploadedFile && uploadedFile.$id) {
+          // Manually construct the URL to bypass any react-native-url-polyfill or SDK wrapper bugs
+          finalImageUrl = `https://fra.cloud.appwrite.io/v1/storage/buckets/${appwriteConfig.photosBucketId}/files/${uploadedFile.$id}/view?project=699b4bcc001dba9897a1`;
         } else {
-          throw new Error('Image upload failed.');
+          throw new Error('Image upload failed to return a valid file from Server.');
         }
       } else if (portfolioImageUri && portfolioImageUri.uri && portfolioImageUri.uri.startsWith('http')) {
         finalImageUrl = portfolioImageUri.uri;
@@ -51,19 +57,27 @@ export const useProfileManager = () => {
         image: imageToSave,
       };
 
+      const permissions = [
+        Permission.read(Role.any()),
+        Permission.update(Role.user(profileData.userId)),
+        Permission.delete(Role.user(profileData.userId)),
+      ];
+
       if (existingProfile) {
         await databases.updateDocument(
           appwriteConfig.databaseId,
           appwriteConfig.collectionId,
           existingProfile.$id,
-          documentPayload
+          documentPayload,
+          permissions
         );
       } else {
         await databases.createDocument(
           appwriteConfig.databaseId,
           appwriteConfig.collectionId,
           ID.unique(),
-          documentPayload
+          documentPayload,
+          permissions
         );
       }
 

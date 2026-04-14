@@ -28,6 +28,11 @@ const C = theme.colors;
 // ---------------------------------------------------------------------------
 // Static display Chip (profile page)
 // ---------------------------------------------------------------------------
+const Chip = ({ label }) => (
+  <View style={styles.chip}>
+    <Text style={styles.chipText}>{label}</Text>
+  </View>
+);
 
 // ---------------------------------------------------------------------------
 // StylistProfileScreen
