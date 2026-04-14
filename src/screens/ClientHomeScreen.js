@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 // Context
 import { AuthContext } from '../context/AuthContext';
@@ -90,6 +91,7 @@ export const ClientHomeScreen = ({ navigation }) => {
   const [selectedServices, setSelectedServices] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState({ hairTypes: [], services: [] });
+  const mapRef = useRef(null);
 
   // ── Data hooks ─────────────────────────────────────────────────────────
   /** GPS coordinates — requested on mount by useLocation */
@@ -119,12 +121,44 @@ export const ClientHomeScreen = ({ navigation }) => {
       }
     : DEFAULT_REGION;
 
+  const handleSearchSubmit = async (directLocation = null) => {
+    // If we received an explicit location from autocomplete
+    if (directLocation && directLocation.latitude && directLocation.longitude) {
+      const newRegion = {
+        latitude: directLocation.latitude,
+        longitude: directLocation.longitude,
+        latitudeDelta: 0.0822,
+        longitudeDelta: 0.0421,
+      };
+      mapRef.current?.animateToRegion(newRegion, 1000);
+      return;
+    }
+
+    if (!searchQuery.trim()) return;
+    try {
+      const results = await Location.geocodeAsync(searchQuery);
+      if (results && results.length > 0) {
+        const { latitude, longitude } = results[0];
+        const newRegion = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.0822,
+          longitudeDelta: 0.0421,
+        };
+        mapRef.current?.animateToRegion(newRegion, 1000);
+      }
+    } catch (error) {
+      console.error('Geocode Error:', error);
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
 
       {/* ── MAP BACKGROUND ── */}
       <MapView
+        ref={mapRef}
         provider={PROVIDER_DEFAULT}
         userInterfaceStyle="dark"
         style={styles.map}
@@ -156,6 +190,7 @@ export const ClientHomeScreen = ({ navigation }) => {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         setFilterVisible={setFilterVisible}
+        onSearchSubmit={handleSearchSubmit}
       />
 
       {/* ── BOTTOM SHEET / STYLIST CAROUSEL ── */}
