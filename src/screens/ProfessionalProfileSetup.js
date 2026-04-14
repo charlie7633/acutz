@@ -20,8 +20,7 @@ import MapView, { Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import { AuthContext } from '../context/AuthContext';
-import { databases, appwriteConfig } from '../config/appwriteConfig';
-import { ID } from 'react-native-appwrite';
+import { useProfileManager } from '../hooks/useProfileManager';
 import { ChipSelector } from '../components/ChipSelector';
 
 const { width, height } = Dimensions.get('window');
@@ -47,7 +46,8 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
   const [selectedServices, setSelectedServices] = useState(existingProfile?.services || []);
   const [portfolioImage, setPortfolioImage] = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(existingProfile?.image || null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { isSaving, saveProfile } = useProfileManager();
 
   // Location State
   const [location, setLocation] = useState(
@@ -183,80 +183,27 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
 
     const userId = user?.uid || user?.$id || 'unknown_user';
 
-    setIsSubmitting(true);
-
     try {
-      let finalImageUrl = null;
-
-      if (portfolioImage) {
-        const fileId = ID.unique();
-        
-        const formData = new FormData();
-        formData.append('fileId', fileId);
-        formData.append('file', {
-          uri: portfolioImage.uri,
-          name: portfolioImage.fileName || `cover_${Date.now()}.jpg`,
-          type: portfolioImage.mimeType || 'image/jpeg',
-        });
-
-        const uploadResponse = await fetch(
-          `https://fra.cloud.appwrite.io/v1/storage/buckets/${appwriteConfig.photosBucketId}/files`,
-          {
-            method: 'POST',
-            headers: {
-              'X-Appwrite-Project': '699b4bcc001dba9897a1',
-            },
-            body: formData,
-          }
-        );
-
-        const uploadedFile = await uploadResponse.json();
-
-        if (uploadResponse.ok && uploadedFile.$id) {
-          finalImageUrl = `https://fra.cloud.appwrite.io/v1/storage/buckets/${appwriteConfig.photosBucketId}/files/${uploadedFile.$id}/view?project=699b4bcc001dba9897a1`;
-        } else {
-          Alert.alert('Upload Error', 'Image upload failed. Profile will be saved without an image.');
-        }
-      }
-
-      const imageToSave = finalImageUrl || existingImageUrl;
-
-      const documentPayload = {
-        userId: userId,
-        businessName: businessName,
+      const profileData = {
+        userId,
+        businessName,
         hairTypes: selectedTextures,
         services: selectedServices,
         startingPrice: priceInt,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        rating: isEditMode ? (existingProfile.rating || 0.0) : 0.0,
-        image: imageToSave
       };
 
+      await saveProfile(profileData, portfolioImage, location, existingProfile);
+
       if (isEditMode) {
-        await databases.updateDocument(
-          appwriteConfig.databaseId,
-          appwriteConfig.collectionId,
-          existingProfile.$id,
-          documentPayload
-        );
         Alert.alert('Updated', 'Your profile has been updated successfully!');
       } else {
-        await databases.createDocument(
-          appwriteConfig.databaseId,
-          appwriteConfig.collectionId,
-          ID.unique(),
-          documentPayload
-        );
         Alert.alert('Success', 'Your professional profile has been saved successfully!');
       }
 
       navigation.goBack();
     } catch (error) {
-      console.error('Appwrite Error:', error);
-      Alert.alert('Database Error', 'Could not save your profile. Please check your Appwrite connection and Stylists collection permissions.');
-    } finally {
-      setIsSubmitting(false);
+      console.error('Save Profile Error:', error);
+      Alert.alert('Error', 'Could not save your profile. Please check your connection and try again.');
     }
   };
 
@@ -340,9 +287,9 @@ export const ProfessionalProfileSetup = ({ navigation, route }) => {
         <TouchableOpacity 
           style={styles.submitButton} 
           onPress={handleSaveProfile}
-          disabled={isSubmitting}
+          disabled={isSaving}
         >
-          {isSubmitting ? (
+          {isSaving ? (
             <ActivityIndicator color={theme.colors.text} size="small" />
           ) : (
             <Text style={styles.submitButtonText}>{isEditMode ? 'Update Profile' : 'Save Profile'}</Text>
