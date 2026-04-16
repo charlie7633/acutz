@@ -7,7 +7,7 @@ A full-stack, two-sided marketplace mobile application connecting clients with s
 This application was developed as a final year dissertation project to solve the friction in discovering and booking specialized hair services. It features a complete lifecycle for two distinct user types: Professionals and Clients. 
 
 ### 🚀 Live Demo & Walkthrough
-> **Note to Recruiters:** [Insert link to your Canva presentation, YouTube video, or website here]
+> **Note to Recruiters:** https://canva.link/cn9dn98e6vokmsn
 
 ## ✨ Core Features
 
@@ -48,5 +48,5 @@ npm install
 npx expo start
 👨‍💻 Author
 Charles Ogunsanya * https://www.linkedin.com/in/charles-ogunsanya-b7954a206/
-link to the presentation 
-(https://canva.link/cn9dn98e6vokmsn)]
+
+
