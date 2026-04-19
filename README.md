@@ -10,7 +10,12 @@ This application was developed as a final year dissertation project to solve the
 > **Note to Recruiters:** https://canva.link/cn9dn98e6vokmsn
 
 ## ✨ Core Features
+### 🧠 Architecture Highlights
+* **Strategic NoSQL Denormalization:** Engineered the `Appointments` collection to embed relational client data, guaranteeing O(1) query speeds for the mobile UI without costly SQL-style client-side joins.
+* **REST API Storage Bypass:** Overcame leaky SDK abstractions by engineering a direct native `fetch` HTTP bypass to securely push `multipart/form-data` binary image assets to Appwrite Cloud Storage.
+* **Custom Hook Data Layer:** Strictly enforced the Separation of Concerns (SoC) and DRY principles by abstracting all asynchronous NoSQL mutations and hardware interfacing (GPS) into polymorphic React Hooks (e.g., `useAppointments`, `useLocation`).
 
+* 
 ### For Clients
 * **Interactive Map Discovery:** Locate nearby stylists using map integration.
 * **Smart Filtering:** Filter professionals based on specific hair types, services, and location.
@@ -40,7 +45,7 @@ To run this project locally on your machine, follow these steps:
 * An active [Appwrite](https://appwrite.io/) instance/cloud account
 
 ### 1. Clone the repository
-git clone [https://github.com/your-username/acutz.git](https://github.com/your-username/acutz.git)
+git clone https://github.com/charlie7633/acutz.git
 cd acutz
 2. Install dependencies
 npm install
